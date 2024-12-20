@@ -1,7 +1,7 @@
 # Asistente Virtual Local
 Proyecto para poder correr un asistente virtual de manera local. Integra distintos modelos de machine learning para poder brindar distintas funcionalidades.
 
-Para instalar dependencias ejecutar
+Para instalar dependencias ejecutar:
 ```
 pip install -r requirements.txt
 ```
@@ -37,7 +37,7 @@ Para mas información sobre Whisper visita: https://github.com/openai/whisper
     - De preferencia con GPU NVIDIA
     - Microfono
 
-# To Do:
+# Por Hacer
 - [X] Transcipción en tiempo real 
 - [X] Detectar palabra clave para que el asistente sepa que se le esta hablando y ejecutar acciones
 - [X] Parametros dentro de YAML
