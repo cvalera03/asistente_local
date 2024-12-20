@@ -13,6 +13,7 @@ import gtts
 import pygame
 import ctypes
 import threading
+from ollama import chat
 
 class Asistente:
     def __init__(self, model, record_timeout, phrase_timeout, energy_threshold, wake_word):
@@ -28,7 +29,8 @@ class Asistente:
         self.record_timeout = record_timeout
         self.phrase_timeout = phrase_timeout
         self.wake_word = wake_word
-
+        self.audio_thread = None
+        self.stop_audio_event = threading.Event()
 
     def listen(self):
         self.source = sr.Microphone(sample_rate=16000)
@@ -82,15 +84,16 @@ class Asistente:
                     
                     if self.wake_word in self.transcription[-1].lower():
                         # Se activo el asistente
-                        mensaje = self.transcription[-1].lower().replace(self.wake_word, "")
+                        pygame.mixer.init()
+                        if pygame.mixer.music.get_busy() == True:
+                            pygame.mixer.music.stop()
+                            pygame.mixer.music.unload()
+                        mensaje = self.transcription[-1].lower().replace(self.wake_word + ",", "")
                         mensaje = "Humano: " + mensaje
                         respuesta = self.accion(mensaje)
+                        subprocess.Popen("ollama stop llama3.2:1b")
                         print(respuesta)
-                        comando = self.tts(respuesta)
-                        if comando:
-                            self.play_audio_pygame("audio.mp3")
-
-
+                        self.tts(respuesta)
                     # os.system('cls' if os.name=='nt' else 'clear')
                     # for line in self.transcription:
                     #     print(line)
@@ -123,28 +126,68 @@ class Asistente:
             t.daemon = True
             t.start()
             respuesta = "Adios"
+        elif "callate" in texto:
+            self.stop_audio()
+            respuesta = "Me callo"
+        else:
+            respuesta = self.chat_bot(texto)
         return respuesta
-    
+
+    def chat_bot(self, texto):
+        stream = chat(
+            model='llama3.2:1b',
+            messages=[{'role': 'user', 'content': texto}],
+            stream=True,
+        )
+        response = ""
+        for chunk in stream:
+            response += chunk.message.content
+        return response
+
     def tts(self, texto):
-        comando = False
+        # Genera el archivo de audio a partir del texto
+        filename = self.generate_audio_file(texto)
+        self.play_audio_threaded(filename)
+
+    def generate_audio_file(self, texto):
         # LLamada a la API de Google Text to Speech
         if len(texto) > 0:
             tts = gtts.gTTS(texto, lang='es')
             tts.save('audio.mp3')
-            comando = True
-            return comando
+            return 'audio.mp3'
         else:
             print("No hay comando")
-            comando = False
-            return comando
-    
+            return None
+
+    def play_audio_threaded(self, filename):
+        self.stop_audio_event.clear()
+        self.audio_thread = threading.Thread(target=self.play_audio, args=(filename,))
+        self.audio_thread.start()
+
     def play_audio(self, filename):
-        # Abre el archivo de audio y lo reproduce
-        subprocess.Popen("mpg123 " + filename)
-    
+        pygame.mixer.music.load(filename)
+        pygame.mixer.music.play()
+        while pygame.mixer.music.get_busy() == True:
+            if self.stop_audio_event.is_set():
+                pygame.mixer.music.stop()
+                break
+            pygame.time.Clock().tick(10)
+        pygame.mixer.music.unload()
+
+    def stop_audio(self):
+        if self.audio_thread and self.audio_thread.is_alive():
+            self.stop_audio_event.set()
+            self.audio_thread.join()
+
+    def listen_and_respond(self):
+        while True:
+            texto = self.listen()
+            if "palabra de llamada" in texto:
+                self.stop_audio()
+                self.accion(texto)
+
     def play_audio_pygame(self, filename):
         # Abre el archivo de audio y lo reproduce con pygame
-        pygame.mixer.init()
         pygame.mixer.music.load(filename)
         pygame.mixer.music.play()
         while pygame.mixer.music.get_busy() == True:
@@ -154,6 +197,5 @@ class Asistente:
 def cerrar_programa():
         time.sleep(2)
         print("Cerrando el programa...")
+        subprocess.Popen("ollama stop llama3.2:1b")
         os._exit(0)
-
-    

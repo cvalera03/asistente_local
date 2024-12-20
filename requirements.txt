@@ -8,4 +8,5 @@ gtts
 pygame
 ctypes
 pyyalm
+ollama
 git+https://github.com/openai/whisper.git
