@@ -1,0 +1,11 @@
+setuptools
+pyaudio
+SpeechRecognition
+--extra-index-url https://download.pytorch.org/whl/cu118
+torch
+numpy
+gtts
+pygame
+ctypes
+pyyalm
+git+https://github.com/openai/whisper.git
