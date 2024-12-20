@@ -1,9 +1,16 @@
 # Asistente Virtual Local
 Proyecto para poder correr un asistente virtual de manera local. Integra distintos modelos de machine learning para poder brindar distintas funcionalidades.
+Actualmente el asistente corre en local sin necesidad de internet con un modelo de LLM basico para su uso. Se puede cambiar por cualquiera de Ollama.
+
+# Requisitos
 
 Para instalar dependencias ejecutar:
 ```
 pip install -r requirements.txt
+```
+Instalar aplicación [`Ollama`](https://ollama.com/) y ejecutar este comando en terminal:
+```
+ollama run llama3.2:1b
 ```
 
 Una vez dentro del repositorio usar:
@@ -32,16 +39,11 @@ scoop install ffmpeg
 
 Para mas información sobre Whisper visita: https://github.com/openai/whisper
 
-### Necesarias
-- Ordenador:
-    - De preferencia con GPU NVIDIA
-    - Microfono
-
 # Por Hacer
 - [X] Transcipción en tiempo real 
 - [X] Detectar palabra clave para que el asistente sepa que se le esta hablando y ejecutar acciones
 - [X] Parametros dentro de YAML
-- [ ] Conectarlo a un chatbot
+- [X] Conectarlo a un chatbot
 - [ ] Configurar acciones desde el YAML
 
 # Créditos y aportaciones
