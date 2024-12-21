@@ -1,8 +1,8 @@
 #config.yaml 
 stt:
   name: whisper
-  recording_time: 10
-  silence_break: 3
+  recording_time: 6
+  silence_break: 2
   model_size: base
   sensibility: 500
 asistente:

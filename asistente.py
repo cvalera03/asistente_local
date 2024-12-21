@@ -31,13 +31,15 @@ class Asistente:
         self.wake_word = wake_word
         self.audio_thread = None
         self.stop_audio_event = threading.Event()
+        self.chat_history = []
 
     def listen(self):
         self.source = sr.Microphone(sample_rate=16000)
         with self.source:
             self.recorder.adjust_for_ambient_noise(self.source)
+            self.recorder.energy_threshold += 25  # Aumenta la ganancia del micrófono
 
-            def record_callback(_, audio:sr.AudioData) -> None:
+            def record_callback(_, audio: sr.AudioData) -> None:
                 """
                 Threaded callback function to recieve audio data when recordings finish.
                 audio: An AudioData containing the recorded bytes.
@@ -88,10 +90,9 @@ class Asistente:
                         if pygame.mixer.music.get_busy() == True:
                             pygame.mixer.music.stop()
                             pygame.mixer.music.unload()
-                        mensaje = self.transcription[-1].lower().replace(self.wake_word + ",", "")
-                        mensaje = "Humano: " + mensaje
+                        mensaje = self.transcription[-1].lower().replace(self.wake_word, "")
                         respuesta = self.accion(mensaje)
-                        subprocess.Popen("ollama stop llama3.2:1b")
+                        subprocess.Popen("ollama stop llama3.2")
                         print(respuesta)
                         self.tts(respuesta)
                     # os.system('cls' if os.name=='nt' else 'clear')
@@ -134,14 +135,20 @@ class Asistente:
         return respuesta
 
     def chat_bot(self, texto):
+        self.chat_history.append({'role': 'user', 'content': texto})
+        
         stream = chat(
-            model='llama3.2:1b',
-            messages=[{'role': 'user', 'content': texto}],
+            model='llama3.2',
+            messages=[
+                *self.chat_history
+            ],
             stream=True,
         )
         response = ""
         for chunk in stream:
             response += chunk.message.content
+        
+        self.chat_history.append({'role': 'assistant', 'content': response})
         return response
 
     def tts(self, texto):
@@ -197,5 +204,5 @@ class Asistente:
 def cerrar_programa():
         time.sleep(2)
         print("Cerrando el programa...")
-        subprocess.Popen("ollama stop llama3.2:1b")
+        subprocess.Popen("ollama stop llama3.2")
         os._exit(0)
