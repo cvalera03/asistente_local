@@ -14,9 +14,11 @@ import pygame
 import ctypes
 import threading
 from ollama import chat
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
 
 class Asistente:
-    def __init__(self, model, record_timeout, phrase_timeout, energy_threshold, wake_word):
+    def __init__(self, model, record_timeout, phrase_timeout, energy_threshold, wake_word, wake_word2, wake_word3, wake_word4, wake_word5):
         self.temp_file = NamedTemporaryFile().name
         self.transcription = ['']
         self.audio_model = whisper.load_model(model)
@@ -29,9 +31,19 @@ class Asistente:
         self.record_timeout = record_timeout
         self.phrase_timeout = phrase_timeout
         self.wake_word = wake_word
+        self.wake_word2 = wake_word2
+        self.wake_word3 = wake_word3
+        self.wake_word4 = wake_word4
+        self.wake_word5 = wake_word5
         self.audio_thread = None
         self.stop_audio_event = threading.Event()
         self.chat_history = []
+        self.spotify = spotipy.Spotify(auth_manager=SpotifyOAuth(
+            client_id='YOUR_CLIENT_ID',
+            client_secret='YOUR_CLIENT_SECRET',
+            redirect_uri='https://127.0.0.1',
+            scope='user-modify-playback-state user-read-playback-state'
+        ))
 
     def listen(self):
         self.source = sr.Microphone(sample_rate=16000)
@@ -84,13 +96,13 @@ class Asistente:
                     else:
                         self.transcription[-1] = text
                     
-                    if self.wake_word in self.transcription[-1].lower():
+                    if self.wake_word in self.transcription[-1].lower() or self.wake_word2 in self.transcription[-1].lower() or self.wake_word3 in self.transcription[-1].lower() or self.wake_word4 in self.transcription[-1].lower() or self.wake_word5 in self.transcription[-1].lower():
                         # Se activo el asistente
                         pygame.mixer.init()
                         if pygame.mixer.music.get_busy() == True:
                             pygame.mixer.music.stop()
                             pygame.mixer.music.unload()
-                        mensaje = self.transcription[-1].lower().replace(self.wake_word, "")
+                        mensaje = self.transcription[-1].lower()
                         respuesta = self.accion(mensaje)
                         subprocess.Popen("ollama stop llama3.2")
                         print(respuesta)
@@ -125,8 +137,23 @@ class Asistente:
         elif "callate" in texto or "cállate" in texto:
             self.stop_audio()
             respuesta = "Me callo"
-        else:
-            respuesta = self.chat_bot(texto)
+        try:
+            if "pausa" in texto:
+                self.spotify.pause_playback()
+                respuesta = "Pausando Spotify"
+            elif "reproduce" in texto:
+                self.spotify.start_playback()
+                respuesta = "Reproduciendo Spotify"
+            elif "siguiente" in texto:
+                self.spotify.next_track()
+                respuesta = "Siguiente canción en Spotify"
+            elif "anterior" in texto:
+                self.spotify.previous_track()
+                respuesta = "Canción anterior en Spotify"
+            else:
+                respuesta = self.chat_bot(texto)
+        except Exception:
+            respuesta = "Necesitas Spotify premium para usar esta función"
         return respuesta
 
     def chat_bot(self, texto):
@@ -135,7 +162,7 @@ class Asistente:
         stream = chat(
             model='llama3.2',
             messages=[
-                {"role": "system", "content": "Eres un ordenador"},
+                {"role": "system", "content": "Eres una asistenta y te llamas lumi pero te pueden llamar" + self.wake_word2 + " o " + self.wake_word3 + " o " + self.wake_word4 + " o " + self.wake_word5 + "y deribados de estos nombres"},
                 *self.chat_history
             ],
             stream=True,
