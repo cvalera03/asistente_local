@@ -95,12 +95,7 @@ class Asistente:
                         subprocess.Popen("ollama stop llama3.2")
                         print(respuesta)
                         self.tts(respuesta)
-                    # os.system('cls' if os.name=='nt' else 'clear')
-                    # for line in self.transcription:
-                    #     print(line)
-                    # # Flush stdout.
-                    # print('', end='', flush=True)
-                    # sleep(0.25)
+                    
             except KeyboardInterrupt:
                 break
     
@@ -185,13 +180,6 @@ class Asistente:
         if self.audio_thread and self.audio_thread.is_alive():
             self.stop_audio_event.set()
             self.audio_thread.join()
-
-    def listen_and_respond(self):
-        while True:
-            texto = self.listen()
-            if "palabra de llamada" in texto:
-                self.stop_audio()
-                self.accion(texto)
 
     def play_audio_pygame(self, filename):
         # Abre el archivo de audio y lo reproduce con pygame
