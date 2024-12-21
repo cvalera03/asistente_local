@@ -122,7 +122,7 @@ class Asistente:
             t.daemon = True
             t.start()
             respuesta = "Adios"
-        elif "callate" in texto:
+        elif "callate" in texto or "cállate" in texto:
             self.stop_audio()
             respuesta = "Me callo"
         else:
@@ -135,6 +135,7 @@ class Asistente:
         stream = chat(
             model='llama3.2',
             messages=[
+                {"role": "system", "content": "Eres un ordenador"},
                 *self.chat_history
             ],
             stream=True,

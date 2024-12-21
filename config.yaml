@@ -3,7 +3,7 @@ stt:
   name: whisper
   recording_time: 6
   silence_break: 2
-  model_size: base
+  model_size: small
   sensibility: 500
 asistente:
   wake_word: ordenador
