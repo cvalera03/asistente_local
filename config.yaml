@@ -6,6 +6,7 @@ stt:
   model_size: small
   sensibility: 500
 asistente:
+  spotify: False
   wake_word: lumi
   wake_word2: lumie
   wake_word3: lumia
