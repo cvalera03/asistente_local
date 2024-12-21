@@ -10,7 +10,7 @@ pip install -r requirements.txt
 ```
 Instalar aplicación [`Ollama`](https://ollama.com/) y ejecutar este comando en terminal:
 ```
-ollama run llama3.2:1b
+ollama run llama3.2
 ```
 
 Una vez dentro del repositorio usar:
