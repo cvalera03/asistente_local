@@ -14,12 +14,10 @@ import pygame
 import ctypes
 import threading
 from ollama import chat
-import spotipy
-from spotipy.oauth2 import SpotifyOAuth
 import keyboard
 
 class Asistente:
-    def __init__(self, model, record_timeout, phrase_timeout, energy_threshold, wake_word, wake_word2, wake_word3, wake_word4, wake_word5, spotify):
+    def __init__(self, model, record_timeout, phrase_timeout, energy_threshold, wake_word, wake_word2, wake_word3, wake_word4, wake_word5):
         self.temp_file = NamedTemporaryFile().name
         self.transcription = ['']
         self.audio_model = whisper.load_model(model)
@@ -39,13 +37,7 @@ class Asistente:
         self.audio_thread = None
         self.stop_audio_event = threading.Event()
         self.chat_history = []
-        self.spotify_active = spotify
-        self.spotify = spotipy.Spotify(auth_manager=SpotifyOAuth(
-            client_id='YOUR_CLIENT_ID',
-            client_secret='YOUR_CLIENT_SECRET',
-            redirect_uri='http://localhost:8080',
-            scope='user-modify-playback-state user-read-playback-state'
-        ))
+        self.callado = False
 
 
     def listen(self):
@@ -108,8 +100,9 @@ class Asistente:
                         mensaje = self.transcription[-1].lower()
                         respuesta = self.accion(mensaje)
                         subprocess.Popen("ollama stop llama3.2")
+                        if self.callado == False:
+                            self.tts(respuesta)
                         print(respuesta)
-                        self.tts(respuesta)
                     
             except KeyboardInterrupt:
                 break
@@ -123,12 +116,30 @@ class Asistente:
     def accion(self, texto):
         respuesta = ""
         print(texto)
-        if "steam" in texto:
-            subprocess.Popen(r'"C:\Program Files (x86)\Steam\steam.exe"')
-            respuesta = "Abro steam"
-        elif "notas" in texto:
-            subprocess.Popen("notepad.exe")
-            respuesta = "Abro notepad"
+        if "abre" in texto:
+            if "explorador" in texto:
+                subprocess.Popen("explorer")
+                respuesta = "Abro el explorador de archivos"
+            elif "steam" in texto:
+                subprocess.Popen(r'"C:\Program Files (x86)\Steam\steam.exe"')
+                respuesta = "Abro steam"
+            elif "navegador" in texto:
+                subprocess.Popen(r'"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"')
+                respuesta = "Abro Brave"
+            elif "epic" in texto:
+                subprocess.Popen(r'"C:\Program Files\Epic Games\Launcher\Portal\Binaries\Win64\EpicGamesLauncher.exe"')
+                respuesta = "Abro Epic Games"
+            elif "discord" in texto:
+                subprocess.Popen(r'"C:\Users\Usuario\AppData\Local\Discord\Update.exe"')
+                respuesta = "Abro Discord"
+            elif "visual studio" in texto:
+                subprocess.Popen(r'"C:\Users\Usuario\AppData\Local\Programs\Microsoft VS Code\Code.exe"')
+                respuesta = "Abro Visual Studio Code"
+            elif "spotify" in texto:
+                subprocess.Popen(r'"C:\Users\Usuario\AppData\Roaming\Spotify\Spotify.exe"')
+                respuesta = "Abro Spotify"     
+            else:
+                respuesta = "No se que abrir"
         elif "bloqueate" in texto:
             ctypes.windll.user32.LockWorkStation()
             respuesta = "Hasta Luego"
@@ -140,39 +151,29 @@ class Asistente:
         elif "callate" in texto or "cállate" in texto:
             self.stop_audio()
             respuesta = "Me callo"
+        elif "modo callado" in texto:
+            if self.callado == False:
+                self.callado = True
+                respuesta = "Modo callado activado"
+                self.tts(respuesta)
+            else:
+                self.callado = False
+                respuesta = "Modo callado desactivado"
+        elif "pausa canción" in texto or "pausa música" in texto or "pausa cancion" in texto or "pausa musica" in texto:
+            keyboard.send("play/pause media")
+            respuesta = "Pausando reproducción"
+        elif "reproduce canción" in texto or "reproduce música" in texto or "reproduce cancion" in texto or "reproduce musica" in texto:
+            keyboard.send("play/pause media")
+            respuesta = "Reproduciendo"
+        elif "siguiente canción" in texto or "siguiente música" in texto or "siguiente cancion" in texto or "siguiente musica" in texto:
+            keyboard.send("next track")
+            respuesta = "Siguiente canción"
+        elif "anterior canción" in texto or "anterior música" in texto or "anterior cancion" in texto or "anterior musica" in texto:
+            keyboard.send("previous track")
+            keyboard.send("previous track")
+            respuesta = "Canción anterior"
         else:
             respuesta = self.chat_bot(texto)
-        if self.spotify_active:
-            try:
-                if "pausa" in texto:
-                    self.spotify.pause_playback()
-                    respuesta = "Pausando Spotify"
-                elif "reproduce" in texto:
-                    self.spotify.start_playback()
-                    respuesta = "Reproduciendo Spotify"
-                elif "siguiente" in texto:
-                    self.spotify.next_track()
-                    respuesta = "Siguiente canción en Spotify"
-                elif "anterior" in texto:
-                    self.spotify.previous_track()
-                    respuesta = "Canción anterior en Spotify" 
-            except Exception:
-                respuesta = "Necesitas Spotify premium para usar esta función"
-        else:
-            if "pausa" in texto:
-                keyboard.send("play/pause media")
-                respuesta = "Pausando reproducción"
-            elif "reproduce" in texto:
-                keyboard.send("play/pause media")
-                respuesta = "Reproduciendo"
-            elif "siguiente" in texto:
-                keyboard.send("next track")
-                respuesta = "Siguiente canción"
-            elif "anterior" in texto:
-                keyboard.send("previous track")
-                respuesta = "Canción anterior"
-            
-        return respuesta
 
     def chat_bot(self, texto):
         self.chat_history.append({'role': 'user', 'content': texto})
@@ -180,7 +181,7 @@ class Asistente:
         stream = chat(
             model='llama3.2',
             messages=[
-                {"role": "system", "content": "Eres una asistenta y te llamas lumi pero te pueden llamar" + self.wake_word2 + " o " + self.wake_word3 + " o " + self.wake_word4 + " o " + self.wake_word5 + "y deribados de estos nombres"},
+                {"role": "system", "content": "Eres una asistenta y te llamas lumi pero te van a llamar de otras formas y no vas a mencionar que te llamen asi"},
                 *self.chat_history
             ],
             stream=True,

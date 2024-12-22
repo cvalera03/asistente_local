@@ -9,6 +9,5 @@ pygame
 ctypes
 pyyalm
 ollama
-spotipy
 keyboard
 git+https://github.com/openai/whisper.git
