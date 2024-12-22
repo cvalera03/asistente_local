@@ -44,7 +44,6 @@ Para mas información sobre Whisper visita: https://github.com/openai/whisper
 - [X] Detectar palabra clave para que el asistente sepa que se le esta hablando y ejecutar acciones
 - [X] Parametros dentro de YAML
 - [X] Conectarlo a un chatbot
-- [X] Conexión con Spotify
 - [X] Control de multimedia local
 
 # Créditos y aportaciones
