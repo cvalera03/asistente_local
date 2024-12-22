@@ -123,6 +123,7 @@ class Asistente:
             elif "steam" in texto:
                 subprocess.Popen(r'"C:\Program Files (x86)\Steam\steam.exe"')
                 respuesta = "Abro steam"
+                print(respuesta)
             elif "navegador" in texto:
                 subprocess.Popen(r'"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"')
                 respuesta = "Abro Brave"
@@ -130,13 +131,13 @@ class Asistente:
                 subprocess.Popen(r'"C:\Program Files\Epic Games\Launcher\Portal\Binaries\Win64\EpicGamesLauncher.exe"')
                 respuesta = "Abro Epic Games"
             elif "discord" in texto:
-                subprocess.Popen(r'"C:\Users\Usuario\AppData\Local\Discord\Update.exe"')
+                subprocess.Popen(r'"C:\Users\loge2\AppData\Local\Discord\Update.exe"')
                 respuesta = "Abro Discord"
             elif "visual studio" in texto:
-                subprocess.Popen(r'"C:\Users\Usuario\AppData\Local\Programs\Microsoft VS Code\Code.exe"')
+                subprocess.Popen(r'"C:\Users\loge2\AppData\Local\Programs\Microsoft VS Code\Code.exe"')
                 respuesta = "Abro Visual Studio Code"
             elif "spotify" in texto:
-                subprocess.Popen(r'"C:\Users\Usuario\AppData\Roaming\Spotify\Spotify.exe"')
+                subprocess.Popen(r'"C:\Users\loge2\AppData\Roaming\Spotify\Spotify.exe"')
                 respuesta = "Abro Spotify"     
             else:
                 respuesta = "No se que abrir"
@@ -174,6 +175,8 @@ class Asistente:
             respuesta = "Canción anterior"
         else:
             respuesta = self.chat_bot(texto)
+        return respuesta
+        
 
     def chat_bot(self, texto):
         self.chat_history.append({'role': 'user', 'content': texto})
