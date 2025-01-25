@@ -8,4 +8,5 @@ gtts
 pygame
 ollama==0.4.7
 keyboard==0.13.5
+pystray
 git+https://github.com/openai/whisper.git

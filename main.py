@@ -14,9 +14,49 @@ import ctypes
 import threading
 from ollama import chat
 import keyboard
+import tkinter as tk
+from tkinter import scrolledtext
+import pystray
+from PIL import Image, ImageDraw
 
 # Ensure the script is running in the correct directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+def create_image():
+    # Load the icon from the file
+    icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logo.ico')
+    return Image.open(icon_path).convert("RGBA")
+
+def on_quit(icon, item):
+    icon.stop()
+    cerrar_programa()
+
+def show_window(icon, item):
+    icon.stop()
+    root.deiconify()
+
+def minimize_to_tray():
+    icon = pystray.Icon("Chatbot")
+    icon.icon = create_image()
+    icon.menu = pystray.Menu(
+        pystray.MenuItem('Show', show_window),
+        pystray.MenuItem('Quit', on_quit)
+    )
+    icon.run_detached()
+    root.withdraw()
+
+# Initialize the GUI
+root = tk.Tk()
+root.title("Chatbot Interface")
+root.iconbitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logo.ico'))
+
+# Create a scrolled text widget for displaying the chat
+chat_display = scrolledtext.ScrolledText(root, wrap=tk.WORD, width=50, height=20)
+chat_display.pack(padx=10, pady=10)
+
+# Add a button to minimize to tray
+minimize_button = tk.Button(root, text="Minimize to Tray", command=minimize_to_tray)
+minimize_button.pack(pady=10)
 
 temp_file = NamedTemporaryFile().name
 transcription = ['']
@@ -51,98 +91,99 @@ def listen():  # This method is used within the class
 
         def record_callback(_, audio: sr.AudioData) -> None:
             """
-            Threaded callback function to recieve audio data when recordings finish.
+            Threaded callback function to receive audio data when recordings finish.
             audio: An AudioData containing the recorded bytes.
             """
             # Grab the raw bytes and push it into the thread safe queue.
             data = audio.get_raw_data()
             data_queue.put(data)
 
-    #Se deja el microfono escuchando con ayuda de speech_recognition
+    # Se deja el microfono escuchando con ayuda de speech_recognition
     recorder.listen_in_background(source, record_callback, phrase_time_limit=record_timeout)
     start = datetime.now()
     while True:
-        try:
-            now = datetime.now()
-            if ((now - start).total_seconds()%18) == 0:
-                write_transcript()
-            # Pull raw recorded audio from the queue.
-            if not data_queue.empty():
-                phrase_complete = False
-                if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
-                    last_sample = bytes()
-                    phrase_complete = True
-                # This is the last time we received new audio data from the queue.
-                phrase_time = now
+        now = datetime.now()
+        if ((now - start).total_seconds() % 18) == 0:
+            write_transcript()
+        # Pull raw recorded audio from the queue.
+        if not data_queue.empty():
+            phrase_complete = False
+            if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
+                last_sample = bytes()
+                phrase_complete = True
+            # This is the last time we received new audio data from the queue.
+            phrase_time = now
 
-                while not data_queue.empty():
-                    data = data_queue.get()
-                    last_sample += data
+            while not data_queue.empty():
+                data = data_queue.get()
+                last_sample += data
 
+            audio_data = sr.AudioData(last_sample, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
+            wav_data = io.BytesIO(audio_data.get_wav_data())
 
-                audio_data = sr.AudioData(last_sample, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
-                wav_data = io.BytesIO(audio_data.get_wav_data())
+            with open(temp_file, 'w+b') as f:
+                f.write(wav_data.read())
 
-                with open(temp_file, 'w+b') as f:
-                    f.write(wav_data.read())
+            # Run the transcription in a separate thread
+            transcription_thread = threading.Thread(target=lambda: transcribe_audio(temp_file))
+            transcription_thread.start()
+            transcription_thread.join()
 
-                result = audio_model.transcribe(temp_file, language='es')
-                text = result['text'].strip()
+            text = transcribe_audio(temp_file)
 
-                if phrase_complete:
-                    transcription.append(text)
-                else:
-                    transcription[-1] = text
-                
-                if wake_word in transcription[-1].lower() or wake_word2 in transcription[-1].lower() or wake_word3 in transcription[-1].lower() or wake_word4 in transcription[-1].lower() or wake_word5 in transcription[-1].lower():
-                    # Se activo el asistente
-                    pygame.mixer.init()
-                    if pygame.mixer.music.get_busy() == True:
-                        pygame.mixer.music.stop()
-                        pygame.mixer.music.unload()
-                    mensaje = transcription[-1].lower()
-                    respuesta = accion(mensaje)
-                    subprocess.Popen("ollama stop llama3.2")
-                    if callado == False:
-                        tts(respuesta)
-                    print(respuesta)
-                
-        except KeyboardInterrupt:
-            break
+            if phrase_complete:
+                transcription.append(text)
+            else:
+                transcription[-1] = text
+
+            if wake_word in transcription[-1].lower() or wake_word2 in transcription[-1].lower() or wake_word3 in transcription[-1].lower() or wake_word4 in transcription[-1].lower() or wake_word5 in transcription[-1].lower():
+                # Se activo el asistente
+                pygame.mixer.init()
+                if pygame.mixer.music.get_busy() == True:
+                    pygame.mixer.music.stop()
+                    pygame.mixer.music.unload()
+                mensaje = transcription[-1].lower()
+                respuesta = accion(mensaje)
+                subprocess.Popen(["ollama", "stop", "llama3.2"], creationflags=subprocess.CREATE_NO_WINDOW)
+                if callado == False:
+                    tts(respuesta)
+                update_chat_display("User: " + mensaje)
+                update_chat_display("Assistant: " + respuesta)
+
+def transcribe_audio(temp_file):
+    result = audio_model.transcribe(temp_file, language='es')
+    return result['text'].strip()
 
 def write_transcript():  # This method is used within the class
-    print("\n\nTranscripcion:")
     for line in transcription:
-        print(line)
         write_file(line, "transcript", "txt")
 
-def accion( texto):  # This method is used within the class
+def accion(texto):  # This method is used within the class
     respuesta = ""
-    print(texto)
     if "abre" in texto:
         if "explorador" in texto:
-            subprocess.Popen(["explorer"])
+            subprocess.Popen(["explorer"], creationflags=subprocess.CREATE_NO_WINDOW)
             respuesta = "Abro el explorador de archivos"
         elif "steam" in texto:
-            subprocess.Popen([r"C:\Program Files (x86)\Steam\steam.exe"])
+            subprocess.Popen([r"C:\Program Files (x86)\Steam\steam.exe"], creationflags=subprocess.CREATE_NO_WINDOW)
             respuesta = "Abro steam"
         elif "navegador" in texto:
-            subprocess.Popen([r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"])
+            subprocess.Popen([r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"], creationflags=subprocess.CREATE_NO_WINDOW)
             respuesta = "Abro Brave"
         elif "epic" in texto:
-            subprocess.Popen([r"C:\Program Files\Epic Games\Launcher\Portal\Binaries\Win64\EpicGamesLauncher.exe"])
+            subprocess.Popen([r"C:\Program Files\Epic Games\Launcher\Portal\Binaries\Win64\EpicGamesLauncher.exe"], creationflags=subprocess.CREATE_NO_WINDOW)
             respuesta = "Abro Epic Games"
         elif "discord" in texto:
-            subprocess.Popen([r"C:\Users\loge2\AppData\Local\Discord\Update.exe"])
+            subprocess.Popen([r"C:\Users\loge2\AppData\Local\Discord\Update.exe"], creationflags=subprocess.CREATE_NO_WINDOW)
             respuesta = "Abro Discord"
         elif "visual studio" in texto:
-            subprocess.Popen([r"C:\Users\loge2\AppData\Local\Programs\Microsoft VS Code\Code.exe"])
+            subprocess.Popen([r"C:\Users\loge2\AppData\Local\Programs\Microsoft VS Code\Code.exe"], creationflags=subprocess.CREATE_NO_WINDOW)
             respuesta = "Abro Visual Studio Code"
         elif "spotify" in texto:
-            subprocess.Popen([r"C:\Users\loge2\AppData\Roaming\Spotify\Spotify.exe"])
-            respuesta = "Abro Spotify"    
+            subprocess.Popen([r"C:\Users\loge2\AppData\Roaming\Spotify\Spotify.exe"], creationflags=subprocess.CREATE_NO_WINDOW)
+            respuesta = "Abro Spotify"
         elif "riot" in texto:
-            subprocess.Popen([r"C:\Riot Games\Riot Client\RiotClientServices.exe"])
+            subprocess.Popen([r"C:\Riot Games\RiotClientServices.exe"], creationflags=subprocess.CREATE_NO_WINDOW)
             respuesta = "Abro Riot Games"
         else:
             respuesta = "No se que abrir"
@@ -182,7 +223,6 @@ def accion( texto):  # This method is used within the class
         respuesta = chat_bot(texto)
     return respuesta
 
-
 def chat_bot(texto):  # This method is used within the class
     chat_history.append({'role': 'user', 'content': texto})
     
@@ -213,7 +253,6 @@ def generate_audio_file(texto):
         tts.save('audio.mp3')
         return 'audio.mp3'
     else:
-        print("No hay comando")
         return None
 
 def play_audio_threaded( filename):  # This method is used within the class
@@ -246,21 +285,16 @@ def play_audio_pygame(filename):
 
 def cerrar_programa():
         time.sleep(2)
-        print("Cerrando el programa...")
-        subprocess.Popen("ollama stop llama3.2")
+        subprocess.Popen(["ollama", "stop", "llama3.2"], creationflags=subprocess.CREATE_NO_WINDOW)
         os._exit(0)
 
+def update_chat_display(text):
+    chat_display.insert(tk.END, text + "\n")
+    chat_display.see(tk.END)
+
 def main():
-    if os.name == 'nt':  # Check if the OS is Windows
-        # Hide the console window
-        ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
-    while True:
-        try:
-            listen()
-            write_transcript()
-        except KeyboardInterrupt:
-            print("Ejecución terminada por el usuario.")
-            break
+    threading.Thread(target=listen, daemon=True).start()
+    root.mainloop()
 
 if __name__ == "__main__":
     main()
