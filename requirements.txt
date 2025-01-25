@@ -1,13 +1,11 @@
 setuptools
 pyaudio
 SpeechRecognition
---extra-index-url https://download.pytorch.org/whl/cu118
-torch
+--index-url https://download.pytorch.org/whl/nightly/cu118
+--pre torch
 numpy
 gtts
 pygame
-ctypes
-pyyalm
-ollama
-keyboard
+ollama==0.4.7
+keyboard==0.13.5
 git+https://github.com/openai/whisper.git
