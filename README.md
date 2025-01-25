@@ -40,7 +40,7 @@ scoop install ffmpeg
 Para mas información sobre Whisper visita: https://github.com/openai/whisper
 
 # Objetivos
-- [X] Transcipción en tiempo real 
+- [X] Transcripción en tiempo real 
 - [X] Detectar palabra clave para que el asistente sepa que se le esta hablando y ejecutar acciones
 - [X] Parametros dentro de YAML
 - [X] Conectarlo a un chatbot
