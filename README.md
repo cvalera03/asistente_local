@@ -42,7 +42,10 @@ Para mas información sobre Whisper visita: https://github.com/openai/whisper
 # Objetivos
 - [X] Transcripción en tiempo real 
 - [X] Detectar palabra clave para que el asistente sepa que se le esta hablando y ejecutar acciones
-- [X] Parametros dentro de YAML
+- [X] Interfaz
+- [X] Opciones de mas modelos
+- [X] Correr en segundo plano
+- [X] Añadir lista de aplicaciones
 - [X] Conectarlo a un chatbot
 - [X] Control de multimedia local
 
