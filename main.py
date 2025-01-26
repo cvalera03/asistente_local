@@ -23,8 +23,9 @@ import csv
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 def create_image():
-    icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logo.png')
-    return Image.open(icon_path).convert("RGBA")
+    icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logo.ico')
+    if os.path.exists(icon_path):
+        return Image.open(icon_path).convert("RGBA")
 
 def on_quit(icon, item):
     icon.stop()
@@ -35,15 +36,17 @@ def show_window(icon, item):
     root.deiconify()
 
 def minimize_to_tray():
-    icon = pystray.Icon("Chatbot")
-    icon.icon = create_image()
-    icon.menu = pystray.Menu(
-        pystray.MenuItem('Show', show_window),
-        pystray.MenuItem('Quit', on_quit)
-    )
-    icon.run_detached()
-    root.withdraw()
-
+    icon_image = create_image()
+    if icon_image:
+        icon = pystray.Icon("Chatbot")
+        icon.icon = icon_image
+        icon.menu = pystray.Menu(
+            pystray.MenuItem('Show', show_window),
+            pystray.MenuItem('Quit', on_quit)
+        )
+        icon.run_detached()
+        root.withdraw()
+        
 def create_default_apps_csv():
     with open('apps.csv', mode='w', newline='') as file:
         writer = csv.writer(file)
@@ -103,21 +106,10 @@ def update_apps_list():
     for app, path in apps.items():
         apps_list.insert(tk.END, f"{app.upper():<20} {path[0]}")
 
-def center_window(window):
-    icon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'logo.ico'))
-    window.iconbitmap(icon_path)
-    window.update_idletasks()
-    width = window.winfo_width()
-    height = window.winfo_height()
-    x = (window.winfo_screenwidth() // 2) - (width // 2)
-    y = (window.winfo_screenheight() // 2) - (height // 2)
-    window.geometry(f'{width}x{height}+{x}+{y}')
-
 def show_apps_window():
     apps_window = Toplevel(root)
     apps_window.title("Current Apps")
     apps_window.geometry("600x475")
-    center_window(apps_window)
     apps_list_label = tk.Label(apps_window, text="Current Apps:")
     apps_list_label.pack(pady=5)
     global apps_list
@@ -171,7 +163,6 @@ def show_options_window():
     options_window = Toplevel(root)
     options_window.title("Options")
     options_window.geometry("400x200")
-    center_window(options_window)
 
     options = load_options()
 
@@ -194,35 +185,6 @@ def show_options_window():
         cerrar_programa()
 
     tk.Button(options_window, text="Save", command=save_and_close).pack(pady=10)
-
-# Initialize the GUI
-root = tk.Tk()
-root.title("Chatbot Interface")
-icon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'logo.ico'))
-root.iconbitmap(icon_path)
-
-# Set the taskbar icon
-set_taskbar_icon(root)
-
-# Create a scrolled text widget for displaying the chat
-chat_display = scrolledtext.ScrolledText(root, wrap=tk.WORD, width=50, height=20)
-chat_display.pack(padx=10, pady=10)
-
-# Add a frame for buttons
-buttons_frame = tk.Frame(root)
-buttons_frame.pack(pady=10)
-
-# Add a button to minimize to tray
-minimize_button = tk.Button(buttons_frame, text="Minimize to Tray", command=minimize_to_tray)
-minimize_button.pack(side=tk.LEFT, padx=5)
-
-# Add a button to view and manage apps
-apps_button = tk.Button(buttons_frame, text="Manage Apps", command=show_apps_window)
-apps_button.pack(side=tk.LEFT, padx=5)
-
-# Add a button to open options window
-options_button = tk.Button(buttons_frame, text="Options", command=show_options_window)
-options_button.pack(side=tk.LEFT, padx=5)
 
 temp_file = NamedTemporaryFile().name
 transcription = ['']
@@ -407,12 +369,52 @@ def cerrar_programa():
     subprocess.Popen(["ollama", "stop", llama_model], creationflags=subprocess.CREATE_NO_WINDOW)
     os._exit(0)
 
+# Initialize the GUI
+root = tk.Tk()
+root.withdraw()  # Hide the window initially
+
+# Set the size of the main window
+root.geometry("500x400")
+
+# Set the title and icon of the main window
+root.title("Chatbot Interface")
+icon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'logo.ico'))
+root.iconbitmap(icon_path)
+
+# Set the taskbar icon
+set_taskbar_icon(root)
+
+# Create a scrolled text widget for displaying the chat
+chat_display = scrolledtext.ScrolledText(root, wrap=tk.WORD, width=50, height=20)
+chat_display.pack(padx=10, pady=10)
+
+# Add a frame for buttons
+buttons_frame = tk.Frame(root)
+buttons_frame.pack(pady=10)
+
+# Add a button to minimize to tray
+minimize_button = tk.Button(buttons_frame, text="Minimize to Tray", command=minimize_to_tray)
+minimize_button.pack(side=tk.LEFT, padx=5)
+
+# Add a button to view and manage apps
+apps_button = tk.Button(buttons_frame, text="Manage Apps", command=show_apps_window)
+apps_button.pack(side=tk.LEFT, padx=5)
+
+# Add a button to open options window
+options_button = tk.Button(buttons_frame, text="Options", command=show_options_window)
+options_button.pack(side=tk.LEFT, padx=5)
+
+# Schedule the delayed start
+root.after(2000, lambda: root.deiconify())  # Delay for 2000 milliseconds (2 seconds)
+
+# Force update the window to ensure all widgets are displayed correctly
+root.update_idletasks()
+
 def update_chat_display(text):
     chat_display.insert(tk.END, text + "\n")
     chat_display.see(tk.END)
 
 def main():
-    center_window(root)
     threading.Thread(target=listen, daemon=True).start()
     root.mainloop()
 
