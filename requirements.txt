@@ -9,4 +9,5 @@ pygame
 ollama==0.4.7
 keyboard==0.13.5
 pystray
+tkinter
 git+https://github.com/openai/whisper.git

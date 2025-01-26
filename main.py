@@ -143,14 +143,15 @@ def set_taskbar_icon(root):
     root.iconbitmap(icon_path)
     ctypes.windll.user32.SendMessageW(root.winfo_id(), 0x80, 1, hicon)
 
-def save_options(llama_model, whisper_model):
+def save_options(llama_model, whisper_model, start_minimized):
     with open('options.csv', mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["LlamaModel", llama_model])
         writer.writerow(["WhisperModel", whisper_model])
+        writer.writerow(["StartMinimized", start_minimized])
 
 def load_options():
-    options = {"LlamaModel": "llama3.2", "WhisperModel": "small"}
+    options = {"LlamaModel": "llama3.2", "WhisperModel": "small", "StartMinimized": "False"}
     if os.path.exists('options.csv'):
         with open('options.csv', mode='r', newline='') as file:
             reader = csv.reader(file)
@@ -162,7 +163,7 @@ def load_options():
 def show_options_window():
     options_window = Toplevel(root)
     options_window.title("Options")
-    options_window.geometry("400x200")
+    options_window.geometry("400x250")
 
     options = load_options()
 
@@ -178,8 +179,12 @@ def show_options_window():
     whisper_model_menu = tk.OptionMenu(options_window, whisper_model_var, "tiny", "base", "small", "medium", "large", "turbo")
     whisper_model_menu.pack(pady=5)
 
+    start_minimized_var = tk.BooleanVar(options_window)
+    start_minimized_var.set(options["StartMinimized"] == "True")
+    tk.Checkbutton(options_window, text="Start Minimized to Tray", variable=start_minimized_var).pack(pady=5)
+
     def save_and_close():
-        save_options(llama_model_var.get(), whisper_model_var.get())
+        save_options(llama_model_var.get(), whisper_model_var.get(), start_minimized_var.get())
         options_window.destroy()
         messagebox.showinfo("Restart Required", "Para que surja efecto, vuelve a abrir el programa.")
         cerrar_programa()
@@ -405,7 +410,11 @@ options_button = tk.Button(buttons_frame, text="Options", command=show_options_w
 options_button.pack(side=tk.LEFT, padx=5)
 
 # Schedule the delayed start
-root.after(2000, lambda: root.deiconify())  # Delay for 2000 milliseconds (2 seconds)
+options = load_options()
+if options["StartMinimized"] == "True":
+    root.after(2000, minimize_to_tray)  # Delay for 2000 milliseconds (2 seconds)
+else:
+    root.after(2000, lambda: root.deiconify())  # Delay for 2000 milliseconds (2 seconds)
 
 # Force update the window to ensure all widgets are displayed correctly
 root.update_idletasks()
