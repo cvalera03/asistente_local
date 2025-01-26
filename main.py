@@ -53,12 +53,11 @@ def load_apps():
     apps = {}
     if not os.path.exists('apps.csv'):
         create_default_apps_csv()
-    if os.path.exists('apps.csv'):
-        with open('apps.csv', mode='r', newline='') as file:
-            reader = csv.reader(file)
-            for row in reader:
-                if len(row) == 2:
-                    apps[row[0].lower()] = [row[1]]
+    with open('apps.csv', mode='r', newline='') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if len(row) == 2:
+                apps[row[0].lower()] = [row[1]]
     return apps
 
 def save_apps():
@@ -152,6 +151,50 @@ def set_taskbar_icon(root):
     root.iconbitmap(icon_path)
     ctypes.windll.user32.SendMessageW(root.winfo_id(), 0x80, 1, hicon)
 
+def save_options(llama_model, whisper_model):
+    with open('options.csv', mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["LlamaModel", llama_model])
+        writer.writerow(["WhisperModel", whisper_model])
+
+def load_options():
+    options = {"LlamaModel": "llama3.2", "WhisperModel": "small"}
+    if os.path.exists('options.csv'):
+        with open('options.csv', mode='r', newline='') as file:
+            reader = csv.reader(file)
+            for row in reader:
+                if len(row) == 2:
+                    options[row[0]] = row[1]
+    return options
+
+def show_options_window():
+    options_window = Toplevel(root)
+    options_window.title("Options")
+    options_window.geometry("400x200")
+    center_window(options_window)
+
+    options = load_options()
+
+    tk.Label(options_window, text="Llama Model:").pack(pady=5)
+    llama_model_var = tk.StringVar(options_window)
+    llama_model_var.set(options["LlamaModel"])
+    llama_model_menu = tk.OptionMenu(options_window, llama_model_var, "llama3.2:3b", "llama3.2:1b")
+    llama_model_menu.pack(pady=5)
+
+    tk.Label(options_window, text="Whisper Model:").pack(pady=5)
+    whisper_model_var = tk.StringVar(options_window)
+    whisper_model_var.set(options["WhisperModel"])
+    whisper_model_menu = tk.OptionMenu(options_window, whisper_model_var, "tiny", "base", "small", "medium", "large", "turbo")
+    whisper_model_menu.pack(pady=5)
+
+    def save_and_close():
+        save_options(llama_model_var.get(), whisper_model_var.get())
+        options_window.destroy()
+        messagebox.showinfo("Restart Required", "Para que surja efecto, vuelve a abrir el programa.")
+        cerrar_programa()
+
+    tk.Button(options_window, text="Save", command=save_and_close).pack(pady=10)
+
 # Initialize the GUI
 root = tk.Tk()
 root.title("Chatbot Interface")
@@ -177,9 +220,16 @@ minimize_button.pack(side=tk.LEFT, padx=5)
 apps_button = tk.Button(buttons_frame, text="Manage Apps", command=show_apps_window)
 apps_button.pack(side=tk.LEFT, padx=5)
 
+# Add a button to open options window
+options_button = tk.Button(buttons_frame, text="Options", command=show_options_window)
+options_button.pack(side=tk.LEFT, padx=5)
+
 temp_file = NamedTemporaryFile().name
 transcription = ['']
-audio_model = whisper.load_model("small")
+options = load_options()
+llama_model = options["LlamaModel"]
+whisper_model = options["WhisperModel"]
+audio_model = whisper.load_model(whisper_model)
 data_queue = Queue()
 recorder = sr.Recognizer()
 recorder.energy_threshold = 500
@@ -250,7 +300,7 @@ def listen():
                     pygame.mixer.music.unload()
                 mensaje = transcription[-1].lower()
                 respuesta = accion(mensaje)
-                subprocess.Popen(["ollama", "stop", "llama3.2"], creationflags=subprocess.CREATE_NO_WINDOW)
+                subprocess.Popen(["ollama", "stop", llama_model], creationflags=subprocess.CREATE_NO_WINDOW)
                 if not callado:
                     tts(respuesta)
                 update_chat_display(f"User: {mensaje}")
@@ -310,7 +360,7 @@ def accion(texto):
 def chat_bot(texto):
     chat_history.append({'role': 'user', 'content': texto})
     stream = chat(
-        model='llama3.2',
+        model=llama_model,
         messages=[
             {"role": "system", "content": "Eres una asistenta y te llamas lumi pero te van a llamar de otras formas y no vas a mencionar que te llamen asi"},
             *chat_history
@@ -354,7 +404,7 @@ def stop_audio():
 
 def cerrar_programa():
     time.sleep(2)
-    subprocess.Popen(["ollama", "stop", "llama3.2"], creationflags=subprocess.CREATE_NO_WINDOW)
+    subprocess.Popen(["ollama", "stop", llama_model], creationflags=subprocess.CREATE_NO_WINDOW)
     os._exit(0)
 
 def update_chat_display(text):
