@@ -20,6 +20,7 @@ from PIL import Image
 import csv
 import uuid
 import re
+import requests
 
 # Ensure the script is running in the correct directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -152,15 +153,21 @@ def set_taskbar_icon(root):
     root.iconbitmap(icon_path)
     ctypes.windll.user32.SendMessageW(root.winfo_id(), 0x80, 1, hicon)
 
-def save_options(llama_model, whisper_model, start_minimized):
+def save_options(llama_model, whisper_model, start_minimized, city, api_key):
+    options = {
+        "LlamaModel": llama_model,
+        "WhisperModel": whisper_model,
+        "StartMinimized": "True" if start_minimized else "False",
+        "City": city,
+        "APIKey": api_key
+    }
     with open('options.csv', mode='w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(["LlamaModel", llama_model])
-        writer.writerow(["WhisperModel", whisper_model])
-        writer.writerow(["StartMinimized", start_minimized])
+        for key, value in options.items():
+            writer.writerow([key, value])
 
 def load_options():
-    options = {"LlamaModel": "llama3.2", "WhisperModel": "small", "StartMinimized": "False"}
+    options = {"LlamaModel": "llama3.2", "WhisperModel": "small", "StartMinimized": "False", "City": "CITY", "APIKey": "API_KEY"}
     if os.path.exists('options.csv'):
         with open('options.csv', mode='r', newline='') as file:
             reader = csv.reader(file)
@@ -172,7 +179,7 @@ def load_options():
 def show_options_window():
     options_window = Toplevel(root)
     options_window.title("Options")
-    options_window.geometry("400x250")
+    options_window.geometry("400x400")
 
     options = load_options()
 
@@ -192,8 +199,18 @@ def show_options_window():
     start_minimized_var.set(options["StartMinimized"] == "True")
     tk.Checkbutton(options_window, text="Start Minimized to Tray", variable=start_minimized_var).pack(pady=5)
 
+    tk.Label(options_window, text="City:").pack(pady=5)
+    city_var = tk.StringVar(options_window)
+    city_var.set(options["City"])
+    tk.Entry(options_window, textvariable=city_var).pack(pady=5)
+
+    tk.Label(options_window, text="API Key:").pack(pady=5)
+    api_key_var = tk.StringVar(options_window)
+    api_key_var.set(options["APIKey"])
+    tk.Entry(options_window, textvariable=api_key_var).pack(pady=5)
+
     def save_and_close():
-        save_options(llama_model_var.get(), whisper_model_var.get(), start_minimized_var.get())
+        save_options(llama_model_var.get(), whisper_model_var.get(), start_minimized_var.get(), city_var.get(), api_key_var.get())
         options_window.destroy()
         messagebox.showinfo("Restart Required", "Para que surja efecto, vuelve a abrir el programa.")
         cerrar_programa()
@@ -205,6 +222,8 @@ transcription = ['']
 options = load_options()
 llama_model = options["LlamaModel"]
 whisper_model = options["WhisperModel"]
+city = options["City"]
+api_key = options["APIKey"]
 audio_model = whisper.load_model(whisper_model)
 data_queue = Queue()
 recorder = sr.Recognizer()
@@ -332,6 +351,8 @@ def accion(texto):
     elif "duermete" in texto or "apagate" in texto or "duérmete" in texto or "apágate" in texto:
         os.system("shutdown /s /t 1")
         respuesta = "Apagando"
+    elif "temperatura" in texto:
+        respuesta = get_temperature()
     else:
         respuesta = chat_bot(texto)
     return respuesta
@@ -388,6 +409,17 @@ def cerrar_programa():
     time.sleep(2)
     subprocess.Popen(["ollama", "stop", llama_model], creationflags=subprocess.CREATE_NO_WINDOW)
     os._exit(0)
+
+def get_temperature():
+    url = f'http://api.openweathermap.org/data/2.5/weather?appid=' + api_key + '&q=' + city + '&units=metric'
+    response = requests.get(url)
+    data = response.json()
+    if response.status_code == 200:
+        temp = data['main']['temp']
+        description = data['weather'][0]['description']
+        return f"El clima en {city} es {description} con una temperatura de {temp}°C"
+    else:
+        return "No se pudo obtener la temperatura"
 
 # Initialize the GUI
 root = tk.Tk()
