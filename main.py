@@ -411,7 +411,7 @@ def cerrar_programa():
     os._exit(0)
 
 def get_temperature():
-    url = f'http://api.openweathermap.org/data/2.5/weather?appid=' + api_key + '&q=' + city + '&units=metric'
+    url = f'http://api.openweathermap.org/data/2.5/weather?appid=' + api_key + '&q=' + city + '&units=metric&lang=es'
     response = requests.get(url)
     data = response.json()
     if response.status_code == 200:
