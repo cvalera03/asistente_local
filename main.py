@@ -179,7 +179,7 @@ def show_options_window():
     tk.Label(options_window, text="oLlama Model:").pack(pady=5)
     llama_model_var = tk.StringVar(options_window)
     llama_model_var.set(options["LlamaModel"])
-    llama_model_menu = tk.OptionMenu(options_window, llama_model_var, "llama3.2:3b", "llama3.2:1b", "deepseek-r1:1.5b", "gemma2:2b", "phi3:3.8b", "qwen:0.5b", "qwen:1.8b", "qwen:4b", "llama2-uncensored:7b")
+    llama_model_menu = tk.OptionMenu(options_window, llama_model_var, "llama3.2:3b", "llama3.2:1b", "deepseek-r1:1.5b", "gemma2:2b", "phi3:3.8b", "qwen:0.5b", "qwen:1.8b", "qwen:4b")
     llama_model_menu.pack(pady=5)
 
     tk.Label(options_window, text="Whisper Model:").pack(pady=5)
