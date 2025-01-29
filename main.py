@@ -19,6 +19,7 @@ import pystray
 from PIL import Image
 import csv
 import uuid
+import re
 
 # Ensure the script is running in the correct directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -178,7 +179,7 @@ def show_options_window():
     tk.Label(options_window, text="oLlama Model:").pack(pady=5)
     llama_model_var = tk.StringVar(options_window)
     llama_model_var.set(options["LlamaModel"])
-    llama_model_menu = tk.OptionMenu(options_window, llama_model_var, "llama3.2:3b", "llama3.2:1b", "deepseek-r1:1.5b")
+    llama_model_menu = tk.OptionMenu(options_window, llama_model_var, "llama3.2:3b", "llama3.2:1b", "deepseek-r1:1.5b", "gemma2:2b", "phi3:3.8b", "qwen:0.5b", "qwen:1.8b", "qwen:4b", "llama2-uncensored:7b")
     llama_model_menu.pack(pady=5)
 
     tk.Label(options_window, text="Whisper Model:").pack(pady=5)
@@ -335,17 +336,21 @@ def accion(texto):
         respuesta = chat_bot(texto)
     return respuesta
 
+def remove_think_tags(text):
+    return re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
+
 def chat_bot(texto):
     chat_history.append({'role': 'user', 'content': texto})
     stream = chat(
         model=llama_model,
         messages=[
-            {"role": "system", "content": "Eres una asistenta y te llamas lumi pero te van a llamar de otras formas y no vas a mencionar que te llamen asi"},
+            {"role": "system", "content": "Eres una asistenta y te llamas lumi pero te van a llamar de otras formas y no vas a mencionar que te llamen asi, hablas español"},
             *chat_history
         ],
         stream=True,
     )
     response = "".join(chunk.message.content for chunk in stream)
+    response = remove_think_tags(response)
     chat_history.append({'role': 'assistant', 'content': response})
     return response
 
