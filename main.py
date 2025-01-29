@@ -18,9 +18,17 @@ from tkinter import scrolledtext, simpledialog, messagebox, Toplevel
 import pystray
 from PIL import Image
 import csv
+import uuid
 
 # Ensure the script is running in the correct directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+def delete_mp3_files():
+    for file in os.listdir():
+        if file.endswith(".mp3"):
+            os.remove(file)
+
+delete_mp3_files()  # Call the function to delete .mp3 files at the start
 
 def create_image():
     icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logo.ico')
@@ -167,10 +175,10 @@ def show_options_window():
 
     options = load_options()
 
-    tk.Label(options_window, text="Llama Model:").pack(pady=5)
+    tk.Label(options_window, text="oLlama Model:").pack(pady=5)
     llama_model_var = tk.StringVar(options_window)
     llama_model_var.set(options["LlamaModel"])
-    llama_model_menu = tk.OptionMenu(options_window, llama_model_var, "llama3.2:3b", "llama3.2:1b")
+    llama_model_menu = tk.OptionMenu(options_window, llama_model_var, "llama3.2:3b", "llama3.2:1b", "deepseek-r1:1.5b")
     llama_model_menu.pack(pady=5)
 
     tk.Label(options_window, text="Whisper Model:").pack(pady=5)
@@ -208,8 +216,8 @@ chat_history = []
 callado = False
 apps = load_apps()
 
-def write_file(data, filename, filetype):
-    with open(f"{filename}.{filetype}", "a") as file:
+def write_file(data, filename, extension):
+    with open(f"{filename}.{extension}", "w", encoding="utf-8") as file:
         file.write(data)
 
 def listen():
@@ -320,6 +328,9 @@ def accion(texto):
         keyboard.send("previous track")
         keyboard.send("previous track")
         respuesta = "Canción anterior"
+    elif "duermete" in texto or "apagate" in texto or "duérmete" in texto or "apágate" in texto:
+        os.system("shutdown /s /t 1")
+        respuesta = "Apagando"
     else:
         respuesta = chat_bot(texto)
     return respuesta
@@ -343,11 +354,10 @@ def tts(texto):
     play_audio_threaded(filename)
 
 def generate_audio_file(texto):
-    if texto:
-        tts = gtts.gTTS(texto, lang='es')
-        tts.save('audio.mp3')
-        return 'audio.mp3'
-    return None
+    tts = gtts.gTTS(texto, lang='es')
+    unique_filename = f'audio_{uuid.uuid4()}.mp3'
+    tts.save(unique_filename)
+    return unique_filename
 
 def play_audio_threaded(filename):
     stop_audio_event.clear()
