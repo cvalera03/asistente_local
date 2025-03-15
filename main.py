@@ -24,10 +24,17 @@ import requests
 import sys
 import traceback
 import google.generativeai as genai 
-
+import logging
 
 # Ensure the script is running in the correct directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+# Configurar el registro al inicio del archivo
+logging.basicConfig(
+    filename='chatbot.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 def handle_unhandled_exception(exc_type, exc_value, exc_traceback):
     if issubclass(exc_type, KeyboardInterrupt):
@@ -35,17 +42,23 @@ def handle_unhandled_exception(exc_type, exc_value, exc_traceback):
         return
 
     error_message = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
-    print(error_message)  # Print the traceback to the console for debugging
-    messagebox.showerror("Unhandled Error", f"An unhandled error has occurred:\n\n{error_message}\n\nThe program will now close.")
+    logging.error(error_message)  # Registrar el error
+    print(error_message)
+    messagebox.showerror("Error no controlado", f"Ha ocurrido un error no controlado:\n\n{error_message}\n\nEl programa se cerrará.")
     cerrar_programa()
-
 
 
 def delete_mp3_files():
     try:
-        for file in os.listdir():
+        directory = os.path.dirname(os.path.abspath(__file__))
+        for file in os.listdir(directory):
             if file.endswith(".mp3"):
-                os.remove(file)
+                file_path = os.path.join(directory, file)
+                os.remove(file_path)
+                logging.info(f"Archivo de audio eliminado: {file_path}")
+    except Exception as e:
+        logging.error(f"Error al eliminar archivos MP3: {e}")
+        print(f"Error al eliminar archivos MP3: {e}")
     except OSError as e:
         print(f"Error al eliminar archivos mp3: {e}")
     except Exception as e:
@@ -232,31 +245,31 @@ def save_options(model_type, llama_model, whisper_model, start_minimized, city, 
 
 
 def load_options():
-    global genai
-    options = {"ModelType": "local", "LlamaModel": "llama3.2", "WhisperModel": "small", "StartMinimized": "False", "City": "CITY", "APIKey": "API_KEY", "GeminiAPIKey": "GEMINI_API_KEY"}
+    default_options = {
+        "ModelType": "local",
+        "LlamaModel": "llama3.2",
+        "WhisperModel": "small",
+        "StartMinimized": "False",
+        "City": "CITY",
+        "APIKey": "API_KEY",
+        "GeminiAPIKey": "GEMINI_API_KEY"
+    }
+    
     try:
         if os.path.exists('options.csv'):
             with open('options.csv', mode='r', newline='') as file:
                 reader = csv.reader(file)
                 for row in reader:
                     if len(row) == 2:
-                        options[row[0]] = row[1]
-        if options["ModelType"] == "gemini" and options["GeminiAPIKey"] != "GEMINI_API_KEY":
-            genai.configure(api_key=options["GeminiAPIKey"])
-    except FileNotFoundError as e:
-        print(f"Error: No se encontró el archivo options.csv: {e}")
-        messagebox.showerror("Error", f"No se encontró el archivo options.csv: {e}")
-    except csv.Error as e:
-        print(f"Error al leer options.csv: {e}")
-        messagebox.showerror("Error", f"Error al leer options.csv: {e}")
-    except OSError as e:
-        print(f"Error de sistema al cargar options.csv: {e}")
-        messagebox.showerror("Error", f"Error de sistema al cargar options.csv: {e}")
+                        default_options[row[0]] = row[1]
+        
+        if default_options["ModelType"] == "gemini" and default_options["GeminiAPIKey"] != "GEMINI_API_KEY":
+            genai.configure(api_key=default_options["GeminiAPIKey"])
+            
+        return default_options
     except Exception as e:
-        print(f"Error inesperado al cargar opciones: {e}")
-        messagebox.showerror("Error", f"Error inesperado al cargar opciones: {e}")
-    return options
-
+        logging.error(f"Error al cargar opciones: {e}")
+        return default_options
 
 
 def show_options_window():
@@ -560,6 +573,12 @@ def process_command(command):
 
 def chat_bot(texto):
     options = load_options()
+    max_history = 10  # Limitar el historial de chat para evitar problemas de memoria
+    
+    if len(chat_history) > max_history * 2:  # Limpiar mensajes antiguos
+        chat_history.clear()
+        logging.info("Historial de chat limpiado debido al límite de longitud")
+    
     if options["ModelType"] == "local":
         try:
             chat_history.append({'role': 'user', 'content': texto})
@@ -567,7 +586,7 @@ def chat_bot(texto):
                 model=llama_model,
                 messages=[
                     {"role": "system", "content": "Eres una asistenta y te llamas lumi pero te van a llamar de otras formas y no vas a mencionar que te llamen asi, hablas español"},
-                    *chat_history
+                    *chat_history[-max_history:]  # Solo usar el historial reciente
                 ],
                 stream=True,
             )
@@ -613,12 +632,16 @@ def generate_audio_file(texto):
 
 def play_audio_threaded(filename):
     if filename is None:
-        print("No se ha generado ningún archivo de audio para reproducir.")
-        return  # Don't try to play if there's no file
+        logging.warning("No se generó ningún archivo de audio para reproducir")
+        return
 
-    stop_audio_event.clear()
     global audio_thread
+    if audio_thread and audio_thread.is_alive():
+        stop_audio()  # Detener cualquier audio existente antes de reproducir uno nuevo
+        
+    stop_audio_event.clear()
     audio_thread = threading.Thread(target=play_audio, args=(filename,))
+    audio_thread.daemon = True  # Hacer que el hilo sea daemon para asegurar que termine con el programa principal
     audio_thread.start()
 
 
