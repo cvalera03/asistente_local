@@ -1,6 +1,7 @@
 # Asistente Virtual Local
-Proyecto para poder correr un asistente virtual de manera local. Integra distintos modelos de machine learning para poder brindar distintas funcionalidades.
+Proyecto para poder correr un asistente virtual de manera local o mediante Gemini. Integra distintos modelos de machine learning para poder brindar distintas funcionalidades.
 Actualmente el asistente corre en local sin necesidad de internet con un modelo de LLM basico para su uso. Se puede cambiar por cualquiera de Ollama.
+Si decides integrarlo con Gemini no sera necesario ollama.
 
 # Requisitos
 
