@@ -12,3 +12,5 @@ pystray
 tkinter
 requests
 git+https://github.com/openai/whisper.git
+Pillow
+google-generativeai
