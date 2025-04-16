@@ -376,18 +376,25 @@ def listen():
         with source:
             recorder.adjust_for_ambient_noise(source)
             recorder.energy_threshold += 25
+            print(f"Energy threshold: {recorder.energy_threshold}") #print the energy threshold
 
             def record_callback(_, audio: sr.AudioData):
-                data = audio.get_raw_data()
-                data_queue.put(data)
+                try:
+                    data = audio.get_raw_data()
+                    data_queue.put(data)
+                    print(f"Data queue size: {data_queue.qsize()}") #print the data queue size
+                except Exception as e:
+                    print(f"Error in record_callback: {e}")
+                    logging.error(f"Error in record_callback: {e}")
 
-        recorder.listen_in_background(source, record_callback, phrase_time_limit=record_timeout)
-        start = datetime.now()
+        # Iniciar la escucha en segundo plano y guardar el objeto de parada
+        stop_listen = recorder.listen_in_background(source, record_callback, phrase_time_limit=record_timeout)
+        print("Escucha en segundo plano iniciada")  # Log para depuración
+
         while True:
-            now = datetime.now()
-            if (now - start).total_seconds() % 18 == 0:
-                write_transcript()
+            # Procesar datos de audio solo si hay datos en la cola
             if not data_queue.empty():
+                now = datetime.now()
                 phrase_complete = False
                 if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
                     last_sample = bytes()
@@ -405,6 +412,7 @@ def listen():
                     f.write(wav_data.read())
 
                 text = transcribe_audio(temp_file)
+                print(f"Transcription: {text}") #print the transcription
 
                 if phrase_complete:
                     transcription.append(text)
@@ -419,7 +427,6 @@ def listen():
                             pygame.mixer.music.unload()
                         mensaje = transcription[-1].lower()
                         respuesta = accion(mensaje)
-                        subprocess.Popen(["ollama", "stop", llama_model], creationflags=subprocess.CREATE_NO_WINDOW)
                         if not callado:
                             tts(respuesta)
                         update_chat_display(f"User: {mensaje}")
@@ -427,25 +434,35 @@ def listen():
                     except Exception as e:
                         print(f"Error al procesar el comando: {e}")
                         messagebox.showerror("Error", f"Error al procesar el comando: {e}")
+            else:
+                # Pequeña pausa para evitar uso excesivo de CPU
+                time.sleep(0.1)
     except sr.UnknownValueError as e:
         print(f"No se pudo entender el audio: {e}")
+        logging.error(f"No se pudo entender el audio: {e}")
     except sr.RequestError as e:
         print(f"Error de servicio de reconocimiento de voz: {e}")
         messagebox.showerror("Error", f"Error de servicio de reconocimiento de voz: {e}")
+        logging.error(f"Error de servicio de reconocimiento de voz: {e}")
     except OSError as e:
         print(f"Error del sistema: {e}")
         messagebox.showerror("Error", f"Error del sistema: {e}")
+        logging.error(f"Error del sistema: {e}")
     except Exception as e:
         print(f"Error inesperado en la escucha: {e}")
         messagebox.showerror("Error", f"Error inesperado en la escucha: {e}")
+        logging.error(f"Error inesperado en la escucha: {e}")
 
 def transcribe_audio(temp_file):
+    print("Entering transcribe_audio") #print when enter in the function
     try:
         result = audio_model.transcribe(temp_file, language='es')
+        print("Exiting transcribe_audio") #print when exit in the function
         return result['text'].strip()
     except Exception as e:
         print(f"Error al transcribir audio: {e}")
         messagebox.showerror("Error", f"Error al transcribir audio: {e}")
+        logging.error(f"Error al transcribir audio: {e}")
         return ""
 
 
@@ -773,7 +790,10 @@ def update_chat_display(text):
 
 def main():
     sys.excepthook = handle_unhandled_exception
-    threading.Thread(target=listen, daemon=True).start()
+    # Lanzar el hilo de escucha como daemon para evitar bloqueos
+    escucha_thread = threading.Thread(target=listen, daemon=True)
+    escucha_thread.start()
+    print("Hilo de escucha lanzado")  # Log para depuración
     root.mainloop()
 
 if __name__ == "__main__":
