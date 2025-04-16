@@ -29,7 +29,6 @@ import logging
 # Ensure the script is running in the correct directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-# Configurar el registro al inicio del archivo
 logging.basicConfig(
     filename='chatbot.log',
     level=logging.INFO,
@@ -40,31 +39,23 @@ def handle_unhandled_exception(exc_type, exc_value, exc_traceback):
     if issubclass(exc_type, KeyboardInterrupt):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
-
     error_message = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
-    logging.error(error_message)  # Registrar el error
+    logging.error(error_message)
     print(error_message)
     messagebox.showerror("Error no controlado", f"Ha ocurrido un error no controlado:\n\n{error_message}\n\nEl programa se cerrará.")
     cerrar_programa()
 
-
 def delete_mp3_files():
-    try:
-        directory = os.path.dirname(os.path.abspath(__file__))
-        for file in os.listdir(directory):
-            if file.endswith(".mp3"):
-                file_path = os.path.join(directory, file)
+    directory = os.path.dirname(os.path.abspath(__file__))
+    for file in os.listdir(directory):
+        if file.endswith(".mp3"):
+            file_path = os.path.join(directory, file)
+            try:
                 os.remove(file_path)
-                logging.info(f"Archivo de audio eliminado: {file_path}")
-    except Exception as e:
-        logging.error(f"Error al eliminar archivos MP3: {e}")
-        print(f"Error al eliminar archivos MP3: {e}")
-    except OSError as e:
-        print(f"Error al eliminar archivos mp3: {e}")
-    except Exception as e:
-        print(f"Error inesperado al eliminar archivos mp3: {e}")
+            except Exception:
+                pass
 
-delete_mp3_files()  # Call the function to delete .mp3 files at the start
+delete_mp3_files()
 
 def create_image():
     icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logo.ico')
@@ -90,59 +81,28 @@ def minimize_to_tray():
         )
         icon.run_detached()
         root.withdraw()
-        
+
 def create_default_apps_csv():
-    try:
-        with open('apps.csv', mode='w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(["Nombre", "Ruta"])
-    except OSError as e:
-        print(f"Error al crear apps.csv: {e}")
-        messagebox.showerror("Error", f"No se pudo crear el archivo apps.csv: {e}")
-    except Exception as e:
-        print(f"Error inesperado al crear apps.csv: {e}")
-        messagebox.showerror("Error", f"Error inesperado al crear apps.csv: {e}")
+    with open('apps.csv', mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Nombre", "Ruta"])
 
 def load_apps():
     apps = {}
-    try:
-        if not os.path.exists('apps.csv'):
-            create_default_apps_csv()
-        with open('apps.csv', mode='r', newline='') as file:
-            reader = csv.reader(file)
-            for row in reader:
-                if len(row) == 2:
-                    apps[row[0].lower()] = [row[1]]
-    except FileNotFoundError as e:
-        print(f"Error: No se encontró el archivo apps.csv: {e}")
-        messagebox.showerror("Error", f"No se encontró el archivo apps.csv: {e}")
-    except csv.Error as e:
-        print(f"Error al leer apps.csv: {e}")
-        messagebox.showerror("Error", f"Error al leer apps.csv: {e}")
-    except OSError as e:
-        print(f"Error de sistema al cargar apps.csv: {e}")
-        messagebox.showerror("Error", f"Error de sistema al cargar apps.csv: {e}")
-    except Exception as e:
-        print(f"Error inesperado al cargar apps: {e}")
-        messagebox.showerror("Error", f"Error inesperado al cargar apps: {e}")
+    if not os.path.exists('apps.csv'):
+        create_default_apps_csv()
+    with open('apps.csv', mode='r', newline='') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if len(row) == 2:
+                apps[row[0].lower()] = [row[1]]
     return apps
 
 def save_apps():
-    try:
-        with open('apps.csv', mode='w', newline='') as file:
-            writer = csv.writer(file)
-            for app, path in apps.items():
-                writer.writerow([app, path[0]])
-    except OSError as e:
-        print(f"Error al guardar apps: {e}")
-        messagebox.showerror("Error", f"Error al guardar apps: {e}")
-    except csv.Error as e:
-        print(f"Error al escribir apps.csv: {e}")
-        messagebox.showerror("Error", f"Error al escribir apps.csv: {e}")
-    except Exception as e:
-        print(f"Error inesperado al guardar apps: {e}")
-        messagebox.showerror("Error", f"Error inesperado al guardar apps: {e}")
-
+    with open('apps.csv', mode='w', newline='') as file:
+        writer = csv.writer(file)
+        for app, path in apps.items():
+            writer.writerow([app, path[0]])
 
 def add_app():
     app_name = simpledialog.askstring("Add App", "Enter the app name:")
@@ -181,44 +141,18 @@ def update_apps_list():
     for app, path in apps.items():
         apps_list.insert(tk.END, f"{app.upper():<20} {path[0]}")
 
-def show_apps_window():
-    apps_window = Toplevel(root)
-    apps_window.title("Current Apps")
-    apps_window.geometry("600x475")
-    apps_list_label = tk.Label(apps_window, text="Current Apps:")
-    apps_list_label.pack(pady=5)
-    global apps_list
-    apps_list = tk.Listbox(apps_window, width=60, height=20, font=("Courier", 10))
-    apps_list.pack(padx=10, pady=10)
-    update_apps_list()
-    
-    buttons_frame = tk.Frame(apps_window)
-    buttons_frame.pack(pady=5)
-    
-    add_button = tk.Button(buttons_frame, text="Add App", command=add_app)
-    add_button.pack(side=tk.LEFT, padx=5)
-    edit_button = tk.Button(buttons_frame, text="Edit App", command=edit_app)
-    edit_button.pack(side=tk.LEFT, padx=5)
-    delete_button = tk.Button(buttons_frame, text="Delete App", command=delete_app)
-    delete_button.pack(side=tk.LEFT, padx=5)
-
 def set_taskbar_icon(root):
-    # Load the icon
     icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logo.ico')
     icon = Image.open(icon_path)
-    
-    # Convert the icon to a format that can be used by ctypes
     icon_data = icon.tobytes("raw", "BGRA")
     hicon = ctypes.windll.user32.CreateIconFromResourceEx(
         icon_data, len(icon_data), 1, 0x00030000, icon.width, icon.height, 0
     )
-    
-    # Set the icon for the taskbar
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("myappid")
     root.iconbitmap(icon_path)
     ctypes.windll.user32.SendMessageW(root.winfo_id(), 0x80, 1, hicon)
 
-def save_options(model_type, llama_model, whisper_model, start_minimized, city, api_key, gemini_api_key):
+def save_options(model_type, llama_model, whisper_model, start_minimized, city, api_key, gemini_api_key, theme):
     options = {
         "ModelType": model_type,
         "LlamaModel": llama_model,
@@ -227,22 +161,12 @@ def save_options(model_type, llama_model, whisper_model, start_minimized, city, 
         "City": city,
         "APIKey": api_key,
         "GeminiAPIKey": gemini_api_key,
+        "Theme": theme
     }
-    try:
-        with open('options.csv', mode='w', newline='') as file:
-            writer = csv.writer(file)
-            for key, value in options.items():
-                writer.writerow([key, value])
-    except OSError as e:
-        print(f"Error al guardar opciones: {e}")
-        messagebox.showerror("Error", f"Error al guardar opciones: {e}")
-    except csv.Error as e:
-        print(f"Error al escribir options.csv: {e}")
-        messagebox.showerror("Error", f"Error al escribir options.csv: {e}")
-    except Exception as e:
-        print(f"Error inesperado al guardar opciones: {e}")
-        messagebox.showerror("Error", f"Error inesperado al guardar opciones: {e}")
-
+    with open('options.csv', mode='w', newline='') as file:
+        writer = csv.writer(file)
+        for key, value in options.items():
+            writer.writerow([key, value])
 
 def load_options():
     default_options = {
@@ -252,88 +176,18 @@ def load_options():
         "StartMinimized": "False",
         "City": "CITY",
         "APIKey": "API_KEY",
-        "GeminiAPIKey": "GEMINI_API_KEY"
+        "GeminiAPIKey": "GEMINI_API_KEY",
+        "Theme": "light"
     }
-    
-    try:
-        if os.path.exists('options.csv'):
-            with open('options.csv', mode='r', newline='') as file:
-                reader = csv.reader(file)
-                for row in reader:
-                    if len(row) == 2:
-                        default_options[row[0]] = row[1]
-        
-        if default_options["ModelType"] == "gemini" and default_options["GeminiAPIKey"] != "GEMINI_API_KEY":
-            genai.configure(api_key=default_options["GeminiAPIKey"])
-            
-        return default_options
-    except Exception as e:
-        logging.error(f"Error al cargar opciones: {e}")
-        return default_options
-
-
-def show_options_window():
-    options_window = Toplevel(root)
-    options_window.title("Options")
-    options_window.geometry("400x500") #Se aumenta la ventana
-
-    options = load_options()
-
-    # --- Model Selection ---
-    model_frame = tk.LabelFrame(options_window, text="Model Selection")
-    model_frame.pack(pady=10, padx=10, fill="x")
-
-    model_type_var = tk.StringVar(options_window)
-    model_type_var.set(options["ModelType"])
-    
-    local_model_radio = tk.Radiobutton(model_frame, text="Local LLM (oLLama)", variable=model_type_var, value="local")
-    local_model_radio.pack(anchor="w", padx=5)
-
-    gemini_model_radio = tk.Radiobutton(model_frame, text="Gemini (API)", variable=model_type_var, value="gemini")
-    gemini_model_radio.pack(anchor="w", padx=5)
-
-    # --- oLlama Model Selection ---
-    tk.Label(options_window, text="oLlama Model:").pack(pady=5)
-    llama_model_var = tk.StringVar(options_window)
-    llama_model_var.set(options["LlamaModel"])
-    llama_model_menu = tk.OptionMenu(options_window, llama_model_var, "llama3.2:3b", "llama3.2:1b", "deepseek-r1:1.5b", "gemma2:2b", "phi3:3.8b", "qwen:0.5b", "qwen:1.8b", "qwen:4b", "granite3.1-moe:3b", "granite3.1-moe:1b")
-    llama_model_menu.pack(pady=5)
-
-    # --- Whisper Model Selection ---
-    tk.Label(options_window, text="Whisper Model:").pack(pady=5)
-    whisper_model_var = tk.StringVar(options_window)
-    whisper_model_var.set(options["WhisperModel"])
-    whisper_model_menu = tk.OptionMenu(options_window, whisper_model_var, "tiny", "base", "small", "medium", "large", "turbo")
-    whisper_model_menu.pack(pady=5)
-
-    # --- Other Options ---
-    start_minimized_var = tk.BooleanVar(options_window)
-    start_minimized_var.set(options["StartMinimized"] == "True")
-    tk.Checkbutton(options_window, text="Start Minimized to Tray", variable=start_minimized_var).pack(pady=5)
-
-    tk.Label(options_window, text="City:").pack(pady=5)
-    city_var = tk.StringVar(options_window)
-    city_var.set(options["City"])
-    tk.Entry(options_window, textvariable=city_var).pack(pady=5)
-
-    tk.Label(options_window, text="API Key:").pack(pady=5)
-    api_key_var = tk.StringVar(options_window)
-    api_key_var.set(options["APIKey"])
-    tk.Entry(options_window, textvariable=api_key_var).pack(pady=5)
-
-    tk.Label(options_window, text="Gemini API Key:").pack(pady=5)
-    gemini_api_key_var = tk.StringVar(options_window)
-    gemini_api_key_var.set(options["GeminiAPIKey"])
-    tk.Entry(options_window, textvariable=gemini_api_key_var).pack(pady=5)
-
-    def save_and_close():
-        save_options(model_type_var.get(), llama_model_var.get(), whisper_model_var.get(), start_minimized_var.get(), city_var.get(), api_key_var.get(), gemini_api_key_var.get())
-        options_window.destroy()
-        messagebox.showinfo("Restart Required", "Para que surja efecto, vuelve a abrir el programa.")
-        cerrar_programa()
-
-    tk.Button(options_window, text="Save", command=save_and_close).pack(pady=10)
-
+    if os.path.exists('options.csv'):
+        with open('options.csv', mode='r', newline='') as file:
+            reader = csv.reader(file)
+            for row in reader:
+                if len(row) == 2:
+                    default_options[row[0]] = row[1]
+    if default_options["ModelType"] == "gemini" and default_options["GeminiAPIKey"] != "GEMINI_API_KEY":
+        genai.configure(api_key=default_options["GeminiAPIKey"])
+    return default_options
 
 temp_file = NamedTemporaryFile().name
 transcription = ['']
@@ -354,17 +208,55 @@ chat_history = []
 callado = False
 apps = load_apps()
 
-def write_file(data, filename, extension):
-    try:
-        with open(f"{filename}.{extension}", "w", encoding="utf-8") as file:
-            file.write(data)
-    except OSError as e:
-        print(f"Error al escribir el archivo {filename}.{extension}: {e}")
-        messagebox.showerror("Error", f"Error al escribir el archivo {filename}.{extension}: {e}")
-    except Exception as e:
-        print(f"Error inesperado al escribir el archivo {filename}.{extension}: {e}")
-        messagebox.showerror("Error", f"Error inesperado al escribir el archivo {filename}.{extension}: {e}")
+THEMES = {
+    "light": {
+        "BG": "#fff",
+        "BG2": "#f5f5f5",
+        "FG": "#111",
+        "FG2": "#333",
+        "BTN_BG": "#fff",
+        "BTN_FG": "#111",
+        "BTN_BG_HOVER": "#111",
+        "BTN_FG_HOVER": "#fff",
+        "ENTRY_BG": "#fff",
+        "ENTRY_FG": "#111",
+        "FRAME_BG": "#f5f5f5",
+        "BORDER": "#ccc"
+    },
+    "dark": {
+        "BG": "#181818",
+        "BG2": "#232323",
+        "FG": "#eee",
+        "FG2": "#fff",
+        "BTN_BG": "#232323",
+        "BTN_FG": "#eee",
+        "BTN_BG_HOVER": "#fff",
+        "BTN_FG_HOVER": "#181818",
+        "ENTRY_BG": "#232323",
+        "ENTRY_FG": "#eee",
+        "FRAME_BG": "#232323",
+        "BORDER": "#444"
+    }
+}
 
+def apply_theme(theme_name):
+    theme = THEMES[theme_name]
+    root.configure(bg=theme["BG"])
+    title_label.config(bg=theme["BG"], fg=theme["FG2"])
+    chat_frame.config(bg=theme["FRAME_BG"], highlightbackground=theme["BORDER"], highlightcolor=theme["BORDER"])
+    chat_display.config(bg=theme["ENTRY_BG"], fg=theme["FG"], insertbackground=theme["FG"], highlightthickness=0)
+    command_frame.config(bg=theme["BG"])
+    command_entry.config(bg=theme["ENTRY_BG"], fg=theme["FG"], highlightbackground=theme["BORDER"])
+    execute_button.config(bg=theme["BTN_BG"], fg=theme["BTN_FG"], activebackground=theme["BTN_BG_HOVER"], activeforeground=theme["BTN_FG_HOVER"])
+    buttons_frame.config(bg=theme["BG"])
+    minimize_button.config(bg=theme["BTN_BG"], fg=theme["BTN_FG"], activebackground=theme["BTN_BG_HOVER"], activeforeground=theme["BTN_FG_HOVER"])
+    apps_button.config(bg=theme["BTN_BG"], fg=theme["BTN_FG"], activebackground=theme["BTN_BG_HOVER"], activeforeground=theme["BTN_FG_HOVER"])
+    options_button.config(bg=theme["BTN_BG"], fg=theme["BTN_FG"], activebackground=theme["BTN_BG_HOVER"], activeforeground=theme["BTN_FG_HOVER"])
+    def make_hover(btn):
+        btn.bind("<Enter>", lambda e: btn.config(bg=theme["BTN_BG_HOVER"], fg=theme["BTN_FG_HOVER"]))
+        btn.bind("<Leave>", lambda e: btn.config(bg=theme["BTN_BG"], fg=theme["BTN_FG"]))
+    for btn in [execute_button, minimize_button, apps_button, options_button]:
+        make_hover(btn)
 
 def listen():
     phrase_time = None
@@ -372,99 +264,59 @@ def listen():
     record_timeout = 10
     last_sample = bytes()
     source = sr.Microphone(sample_rate=16000)
-    try:
-        with source:
-            recorder.adjust_for_ambient_noise(source)
-            recorder.energy_threshold += 25
-            print(f"Energy threshold: {recorder.energy_threshold}") #print the energy threshold
+    with source:
+        recorder.adjust_for_ambient_noise(source)
+        recorder.energy_threshold += 25
 
-            def record_callback(_, audio: sr.AudioData):
-                try:
-                    data = audio.get_raw_data()
-                    data_queue.put(data)
-                    print(f"Data queue size: {data_queue.qsize()}") #print the data queue size
-                except Exception as e:
-                    print(f"Error in record_callback: {e}")
-                    logging.error(f"Error in record_callback: {e}")
+    def record_callback(_, audio: sr.AudioData):
+        data = audio.get_raw_data()
+        data_queue.put(data)
 
-        # Iniciar la escucha en segundo plano y guardar el objeto de parada
-        stop_listen = recorder.listen_in_background(source, record_callback, phrase_time_limit=record_timeout)
-        print("Escucha en segundo plano iniciada")  # Log para depuración
-
-        while True:
-            # Procesar datos de audio solo si hay datos en la cola
-            if not data_queue.empty():
-                now = datetime.now()
-                phrase_complete = False
-                if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
-                    last_sample = bytes()
-                    phrase_complete = True
-                phrase_time = now
-
-                while not data_queue.empty():
-                    data = data_queue.get()
-                    last_sample += data
-
-                audio_data = sr.AudioData(last_sample, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
-                wav_data = io.BytesIO(audio_data.get_wav_data())
-
-                with open(temp_file, 'w+b') as f:
-                    f.write(wav_data.read())
-
-                text = transcribe_audio(temp_file)
-                print(f"Transcription: {text}") #print the transcription
-
-                if phrase_complete:
-                    transcription.append(text)
-                else:
-                    transcription[-1] = text
-
-                if any(word in transcription[-1].lower() for word in wake_word):
-                    try:
-                        pygame.mixer.init()
-                        if pygame.mixer.music.get_busy():
-                            pygame.mixer.music.stop()
-                            pygame.mixer.music.unload()
-                        mensaje = transcription[-1].lower()
-                        respuesta = accion(mensaje)
-                        if not callado:
-                            tts(respuesta)
-                        update_chat_display(f"User: {mensaje}")
-                        update_chat_display(f"Assistant: {respuesta}")
-                    except Exception as e:
-                        print(f"Error al procesar el comando: {e}")
-                        messagebox.showerror("Error", f"Error al procesar el comando: {e}")
+    # Iniciar la escucha en segundo plano fuera del 'with'
+    stop_listen = recorder.listen_in_background(source, record_callback, phrase_time_limit=record_timeout)
+    while True:
+        if not data_queue.empty():
+            now = datetime.now()
+            phrase_complete = False
+            if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
+                last_sample = bytes()
+                phrase_complete = True
+            phrase_time = now
+            while not data_queue.empty():
+                data = data_queue.get()
+                last_sample += data
+            audio_data = sr.AudioData(last_sample, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
+            wav_data = io.BytesIO(audio_data.get_wav_data())
+            with open(temp_file, 'w+b') as f:
+                f.write(wav_data.read())
+            text = transcribe_audio(temp_file)
+            if phrase_complete:
+                transcription.append(text)
             else:
-                # Pequeña pausa para evitar uso excesivo de CPU
-                time.sleep(0.1)
-    except sr.UnknownValueError as e:
-        print(f"No se pudo entender el audio: {e}")
-        logging.error(f"No se pudo entender el audio: {e}")
-    except sr.RequestError as e:
-        print(f"Error de servicio de reconocimiento de voz: {e}")
-        messagebox.showerror("Error", f"Error de servicio de reconocimiento de voz: {e}")
-        logging.error(f"Error de servicio de reconocimiento de voz: {e}")
-    except OSError as e:
-        print(f"Error del sistema: {e}")
-        messagebox.showerror("Error", f"Error del sistema: {e}")
-        logging.error(f"Error del sistema: {e}")
-    except Exception as e:
-        print(f"Error inesperado en la escucha: {e}")
-        messagebox.showerror("Error", f"Error inesperado en la escucha: {e}")
-        logging.error(f"Error inesperado en la escucha: {e}")
+                transcription[-1] = text
+            if any(word in transcription[-1].lower() for word in wake_word):
+                try:
+                    pygame.mixer.init()
+                    if pygame.mixer.music.get_busy():
+                        pygame.mixer.music.stop()
+                        pygame.mixer.music.unload()
+                    mensaje = transcription[-1].lower()
+                    respuesta = accion(mensaje)
+                    if not callado:
+                        tts(respuesta)
+                    update_chat_display(f"User: {mensaje}")
+                    update_chat_display(f"Assistant: {respuesta}")
+                except Exception:
+                    pass
+        else:
+            time.sleep(0.1)
 
 def transcribe_audio(temp_file):
-    print("Entering transcribe_audio") #print when enter in the function
     try:
         result = audio_model.transcribe(temp_file, language='es')
-        print("Exiting transcribe_audio") #print when exit in the function
         return result['text'].strip()
-    except Exception as e:
-        print(f"Error al transcribir audio: {e}")
-        messagebox.showerror("Error", f"Error al transcribir audio: {e}")
-        logging.error(f"Error al transcribir audio: {e}")
+    except Exception:
         return ""
-
 
 def write_transcript():
     for line in transcription:
@@ -475,12 +327,8 @@ def open_app(app_name):
         try:
             subprocess.Popen(apps[app_name][0], creationflags=subprocess.CREATE_NO_WINDOW)
             return f"Abro {app_name}"
-        except FileNotFoundError:
-            return f"No se encontró la ruta de {app_name}."
-        except OSError:
+        except Exception:
             return f"No se pudo abrir {app_name}."
-        except Exception as e:
-            return f"Error al abrir {app_name}: {e}"
     else:
         return f"No tengo configurada la aplicación '{app_name}'."
 
@@ -527,7 +375,16 @@ def toggle_silent_mode():
     return respuesta
 
 def get_temperature():
-    return get_temperature()
+    url = f'http://api.openweathermap.org/data/2.5/weather?appid=' + api_key + '&q=' + city + '&units=metric&lang=es'
+    try:
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        temp = data['main']['temp']
+        description = data['weather'][0]['description']
+        return f"El clima en {city} es {description} con una temperatura de {temp}°C"
+    except Exception:
+        return "No se pudo obtener la temperatura"
 
 commands = {
     "abre": open_app,
@@ -565,7 +422,7 @@ def remove_think_tags(text):
 
 def process_command_entry(command_entry):
     command = command_entry.get()
-    command_entry.delete(0, tk.END)  # Clear the entry field
+    command_entry.delete(0, tk.END)
     if command:
         threading.Thread(target=process_command, args=(command,), daemon=True).start()
 
@@ -575,27 +432,20 @@ def process_command(command):
         if pygame.mixer.music.get_busy():
             pygame.mixer.music.stop()
             pygame.mixer.music.unload()
-
         respuesta = accion(command)
         subprocess.Popen(["ollama", "stop", llama_model], creationflags=subprocess.CREATE_NO_WINDOW)
-
         if not callado:
             tts(respuesta)
-
         update_chat_display(f"User: {command}")
         update_chat_display(f"Assistant: {respuesta}")
-    except Exception as e:
-        print(f"Error al procesar el comando: {e}")
-        messagebox.showerror("Error", f"Error al procesar el comando: {e}")
+    except Exception:
+        pass
 
 def chat_bot(texto):
     options = load_options()
-    max_history = 10  # Limitar el historial de chat para evitar problemas de memoria
-    
-    if len(chat_history) > max_history * 2:  # Limpiar mensajes antiguos
+    max_history = 10
+    if len(chat_history) > max_history * 2:
         chat_history.clear()
-        logging.info("Historial de chat limpiado debido al límite de longitud")
-    
     if options["ModelType"] == "local":
         try:
             chat_history.append({'role': 'user', 'content': texto})
@@ -603,7 +453,7 @@ def chat_bot(texto):
                 model=llama_model,
                 messages=[
                     {"role": "system", "content": "Eres una asistenta y te llamas lumi pero te van a llamar de otras formas y no vas a mencionar que te llamen asi, hablas español"},
-                    *chat_history[-max_history:]  # Solo usar el historial reciente
+                    *chat_history[-max_history:]
                 ],
                 stream=True,
             )
@@ -611,9 +461,7 @@ def chat_bot(texto):
             response = remove_think_tags(response)
             chat_history.append({'role': 'assistant', 'content': response})
             return response
-        except Exception as e:
-            print(f"Error al interactuar con el LLM: {e}")
-            messagebox.showerror("Error", f"Error al interactuar con el LLM: {e}")
+        except Exception:
             return "Error al interactuar con el LLM"
     elif options["ModelType"] == "gemini":
         try:
@@ -621,19 +469,15 @@ def chat_bot(texto):
             chat_g = model.start_chat(history=[])
             response_g = chat_g.send_message(texto)
             return response_g.text
-        except Exception as e:
-            print(f"Error al interactuar con Gemini: {e}")
-            messagebox.showerror("Error", f"Error al interactuar con Gemini: {e}")
+        except Exception:
             return "Error al interactuar con Gemini"
 
 def tts(texto):
     try:
         filename = generate_audio_file(texto)
         play_audio_threaded(filename)
-    except Exception as e:
-        print(f"Error al generar o reproducir audio: {e}")
-        messagebox.showerror("Error", f"Error al generar o reproducir audio: {e}")
-
+    except Exception:
+        pass
 
 def generate_audio_file(texto):
     try:
@@ -641,26 +485,19 @@ def generate_audio_file(texto):
         unique_filename = f'audio_{uuid.uuid4()}.mp3'
         tts.save(unique_filename)
         return unique_filename
-    except Exception as e:
-        print(f"Error al generar el archivo de audio: {e}")
-        messagebox.showerror("Error", f"Error al generar el archivo de audio: {e}")
-        return None  # Indicate failure to generate audio
-
+    except Exception:
+        return None
 
 def play_audio_threaded(filename):
     if filename is None:
-        logging.warning("No se generó ningún archivo de audio para reproducir")
         return
-
     global audio_thread
     if audio_thread and audio_thread.is_alive():
-        stop_audio()  # Detener cualquier audio existente antes de reproducir uno nuevo
-        
+        stop_audio()
     stop_audio_event.clear()
     audio_thread = threading.Thread(target=play_audio, args=(filename,))
-    audio_thread.daemon = True  # Hacer que el hilo sea daemon para asegurar que termine con el programa principal
+    audio_thread.daemon = True
     audio_thread.start()
-
 
 def play_audio(filename):
     try:
@@ -672,13 +509,8 @@ def play_audio(filename):
                 break
             pygame.time.Clock().tick(10)
         pygame.mixer.music.unload()
-    except pygame.error as e:
-        print(f"Error de Pygame al reproducir audio: {e}")
-        messagebox.showerror("Error", f"Error de Pygame al reproducir audio: {e}")
-    except Exception as e:
-        print(f"Error inesperado al reproducir audio: {e}")
-        messagebox.showerror("Error", f"Error inesperado al reproducir audio: {e}")
-
+    except Exception:
+        pass
 
 def stop_audio():
     global audio_thread
@@ -686,102 +518,257 @@ def stop_audio():
         stop_audio_event.set()
         audio_thread.join()
 
-
 def cerrar_programa():
     try:
         time.sleep(2)
         subprocess.Popen(["ollama", "stop", llama_model], creationflags=subprocess.CREATE_NO_WINDOW)
         os._exit(0)
-    except Exception as e:
-        print(f"Error inesperado al cerrar el programa: {e}")
-        messagebox.showerror("Error", f"Error inesperado al cerrar el programa: {e}")
+    except Exception:
         os._exit(1)
 
+def show_apps_window():
+    theme = THEMES[options["Theme"]]
+    apps_window = Toplevel(root)
+    apps_window.title("Current Apps")
+    apps_window.geometry("600x475")
+    apps_window.configure(bg=theme["BG"])
+    apps_list_label = tk.Label(apps_window, text="Current Apps:", font=("Segoe UI", 12, "bold"), fg=theme["FG2"], bg=theme["BG"])
+    apps_list_label.pack(pady=5)
+    global apps_list
+    apps_list = tk.Listbox(apps_window, width=60, height=20, font=("Courier", 10), bg=theme["ENTRY_BG"], fg=theme["FG"], bd=1, relief="solid", highlightbackground=theme["BORDER"])
+    apps_list.pack(padx=10, pady=10)
+    update_apps_list()
+    buttons_frame = tk.Frame(apps_window, bg=theme["BG"])
+    buttons_frame.pack(pady=5)
+    def style_button(btn):
+        btn.configure(
+            font=("Segoe UI", 10, "bold"),
+            bg=theme["BTN_BG"],
+            fg=theme["BTN_FG"],
+            activebackground=theme["BTN_BG_HOVER"],
+            activeforeground=theme["BTN_FG_HOVER"],
+            bd=0,
+            relief="flat",
+            cursor="hand2"
+        )
+        btn.bind("<Enter>", lambda e: btn.config(bg=theme["BTN_BG_HOVER"], fg=theme["BTN_FG_HOVER"]))
+        btn.bind("<Leave>", lambda e: btn.config(bg=theme["BTN_BG"], fg=theme["BTN_FG"]))
+    add_button = tk.Button(buttons_frame, text="Add App", command=add_app)
+    style_button(add_button)
+    add_button.pack(side=tk.LEFT, padx=5)
+    edit_button = tk.Button(buttons_frame, text="Edit App", command=edit_app)
+    style_button(edit_button)
+    edit_button.pack(side=tk.LEFT, padx=5)
+    delete_button = tk.Button(buttons_frame, text="Delete App", command=delete_app)
+    style_button(delete_button)
+    delete_button.pack(side=tk.LEFT, padx=5)
 
-def get_temperature():
-    url = f'http://api.openweathermap.org/data/2.5/weather?appid=' + api_key + '&q=' + city + '&units=metric&lang=es'
-    try:
-        response = requests.get(url, timeout=5)  # Timeout de 5 segundos
-        response.raise_for_status()  # Lanza una excepción para códigos de error HTTP
-        data = response.json()
-        temp = data['main']['temp']
-        description = data['weather'][0]['description']
-        return f"El clima en {city} es {description} con una temperatura de {temp}°C"
-    except requests.exceptions.Timeout as e:
-        print(f"Tiempo de espera agotado: {e}")
-        messagebox.showerror("Error", f"Tiempo de espera agotado: {e}")
-        return "No se pudo obtener la temperatura (tiempo agotado)"
-    except requests.exceptions.RequestException as e:
-        print(f"Error al obtener la temperatura: {e}")
-        messagebox.showerror("Error", f"Error al obtener la temperatura: {e}")
-        return "No se pudo obtener la temperatura"
-    except KeyError as e:
-        print(f"Error al procesar la respuesta del clima: {e}")
-        messagebox.showerror("Error", f"Error al procesar la respuesta del clima: {e}")
-        return "No se pudo obtener la temperatura"
-    except Exception as e:
-        print(f"Error inesperado al obtener la temperatura: {e}")
-        messagebox.showerror("Error", f"Error inesperado al obtener la temperatura: {e}")
-        return "No se pudo obtener la temperatura"
-
+def show_options_window():
+    theme = THEMES[options["Theme"]]
+    options_window = Toplevel(root)
+    options_window.title("Options")
+    options_window.geometry("400x600")
+    options_window.configure(bg=theme["BG"])
+    opts = load_options()
+    model_frame = tk.LabelFrame(options_window, text="Model Selection", bg=theme["FRAME_BG"], fg=theme["FG2"], font=("Segoe UI", 10, "bold"), bd=2, relief="groove", highlightbackground=theme["BORDER"])
+    model_frame.pack(pady=10, padx=10, fill="x")
+    model_type_var = tk.StringVar(options_window)
+    model_type_var.set(opts["ModelType"])
+    local_model_radio = tk.Radiobutton(
+        model_frame, text="Local LLM (oLLama)", variable=model_type_var, value="local",
+        bg=theme["FRAME_BG"], fg=theme["FG"], selectcolor=theme["FRAME_BG"], font=("Segoe UI", 10), indicatoron=1, activebackground=theme["FRAME_BG"], activeforeground=theme["FG"]
+    )
+    local_model_radio.pack(anchor="w", padx=5)
+    gemini_model_radio = tk.Radiobutton(
+        model_frame, text="Gemini (API)", variable=model_type_var, value="gemini",
+        bg=theme["FRAME_BG"], fg=theme["FG"], selectcolor=theme["FRAME_BG"], font=("Segoe UI", 10), indicatoron=1, activebackground=theme["FRAME_BG"], activeforeground=theme["FG"]
+    )
+    gemini_model_radio.pack(anchor="w", padx=5)
+    tk.Label(options_window, text="oLlama Model:", bg=theme["BG"], fg=theme["FG2"], font=("Segoe UI", 10, "bold")).pack(pady=5)
+    llama_model_var = tk.StringVar(options_window)
+    llama_model_var.set(opts["LlamaModel"])
+    llama_model_menu = tk.OptionMenu(options_window, llama_model_var, "llama3.2:3b", "llama3.2:1b", "deepseek-r1:1.5b", "gemma2:2b", "phi3:3.8b", "qwen:0.5b", "qwen:1.8b", "qwen:4b", "granite3.1-moe:3b", "granite3.1-moe:1b")
+    llama_model_menu.config(bg=theme["BTN_BG"], fg=theme["BTN_FG"], font=("Segoe UI", 10))
+    llama_model_menu["menu"].config(bg=theme["BTN_BG"], fg=theme["BTN_FG"])
+    llama_model_menu.pack(pady=5)
+    tk.Label(options_window, text="Whisper Model:", bg=theme["BG"], fg=theme["FG2"], font=("Segoe UI", 10, "bold")).pack(pady=5)
+    whisper_model_var = tk.StringVar(options_window)
+    whisper_model_var.set(opts["WhisperModel"])
+    whisper_model_menu = tk.OptionMenu(options_window, whisper_model_var, "tiny", "base", "small", "medium", "large", "turbo")
+    whisper_model_menu.config(bg=theme["BTN_BG"], fg=theme["BTN_FG"], font=("Segoe UI", 10))
+    whisper_model_menu["menu"].config(bg=theme["BTN_BG"], fg=theme["BTN_FG"])
+    whisper_model_menu.pack(pady=5)
+    start_minimized_var = tk.BooleanVar(options_window)
+    start_minimized_var.set(opts["StartMinimized"] == "True")
+    tk.Checkbutton(options_window, text="Start Minimized to Tray", variable=start_minimized_var, bg=theme["BG"], fg=theme["FG"], font=("Segoe UI", 10), selectcolor=theme["BTN_BG"]).pack(pady=5)
+    tk.Label(options_window, text="City:", bg=theme["BG"], fg=theme["FG2"], font=("Segoe UI", 10, "bold")).pack(pady=5)
+    city_var = tk.StringVar(options_window)
+    city_var.set(opts["City"])
+    tk.Entry(options_window, textvariable=city_var, bg=theme["ENTRY_BG"], fg=theme["FG"], font=("Segoe UI", 10)).pack(pady=5)
+    tk.Label(options_window, text="API Key:", bg=theme["BG"], fg=theme["FG2"], font=("Segoe UI", 10, "bold")).pack(pady=5)
+    api_key_var = tk.StringVar(options_window)
+    api_key_var.set(opts["APIKey"])
+    tk.Entry(options_window, textvariable=api_key_var, bg=theme["ENTRY_BG"], fg=theme["FG"], font=("Segoe UI", 10)).pack(pady=5)
+    tk.Label(options_window, text="Gemini API Key:", bg=theme["BG"], fg=theme["FG2"], font=("Segoe UI", 10, "bold")).pack(pady=5)
+    gemini_api_key_var = tk.StringVar(options_window)
+    gemini_api_key_var.set(opts["GeminiAPIKey"])
+    tk.Entry(options_window, textvariable=gemini_api_key_var, bg=theme["ENTRY_BG"], fg=theme["FG"], font=("Segoe UI", 10)).pack(pady=5)
+    tk.Label(options_window, text="Tema:", bg=theme["BG"], fg=theme["FG2"], font=("Segoe UI", 10, "bold")).pack(pady=5)
+    theme_var = tk.StringVar(options_window)
+    theme_var.set(opts.get("Theme", "light"))
+    theme_menu = tk.OptionMenu(options_window, theme_var, "light", "dark")
+    theme_menu.config(bg=theme["BTN_BG"], fg=theme["BTN_FG"], font=("Segoe UI", 10))
+    theme_menu["menu"].config(bg=theme["BTN_BG"], fg=theme["BTN_FG"])
+    theme_menu.pack(pady=5)
+    def save_and_close():
+        save_options(model_type_var.get(), llama_model_var.get(), whisper_model_var.get(), start_minimized_var.get(), city_var.get(), api_key_var.get(), gemini_api_key_var.get(), theme_var.get())
+        options_window.destroy()
+        messagebox.showinfo("Restart Required", "Para que surja efecto, vuelve a abrir el programa.")
+        cerrar_programa()
+    save_btn = tk.Button(options_window, text="Guardar", command=save_and_close)
+    save_btn.configure(
+        font=("Segoe UI", 10, "bold"),
+        bg=theme["BTN_BG"],
+        fg=theme["BTN_FG"],
+        activebackground=theme["BTN_BG_HOVER"],
+        activeforeground=theme["BTN_FG_HOVER"],
+        bd=0,
+        relief="flat",
+        cursor="hand2"
+    )
+    save_btn.pack(pady=10)
+    save_btn.bind("<Enter>", lambda e: save_btn.config(bg=theme["BTN_BG_HOVER"], fg=theme["BTN_FG_HOVER"]))
+    save_btn.bind("<Leave>", lambda e: save_btn.config(bg=theme["BTN_BG"], fg=theme["BTN_FG"]))
 
 # Initialize the GUI
 root = tk.Tk()
-root.withdraw()  # Hide the window initially
+root.withdraw()
 
-# Set the size of the main window
-root.geometry("500x450")
+options = load_options()
+theme_name = options.get("Theme", "light")
+theme = THEMES[theme_name]
 
-# Set the title and icon of the main window
-root.title("Chatbot Interface")
+root.geometry("550x550")
+root.title("Lumi - Asistente Virtual")
 icon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'logo.ico'))
 root.iconbitmap(icon_path)
-
-# Set the taskbar icon
 set_taskbar_icon(root)
 
-# Create a scrolled text widget for displaying the chat
-chat_display = scrolledtext.ScrolledText(root, wrap=tk.WORD, width=50, height=20)
-chat_display.pack(padx=10, pady=10)
+title_label = tk.Label(
+    root,
+    text="Lumi - Asistente Virtual",
+    font=("Segoe UI", 20, "bold"),
+    fg=theme["FG2"],
+    bg=theme["BG"]
+)
+title_label.pack(pady=(18, 5))
 
-# Add a frame for the command entry
-command_frame = tk.Frame(root)
-command_frame.pack(pady=10)
+chat_frame = tk.Frame(root, bg=theme["FRAME_BG"], bd=2, relief="groove", highlightbackground=theme["BORDER"], highlightcolor=theme["BORDER"])
+chat_frame.pack(padx=15, pady=5, fill="both", expand=True)
 
-# Add an entry field for commands
-command_entry = tk.Entry(command_frame, width=40)
-command_entry.pack(side=tk.LEFT, padx=5)
+chat_display = scrolledtext.ScrolledText(
+    chat_frame, 
+    wrap=tk.WORD, 
+    width=54, 
+    height=18, 
+    font=("Segoe UI", 11), 
+    bg=theme["ENTRY_BG"], 
+    fg=theme["FG"], 
+    bd=0, 
+    relief="flat", 
+    highlightthickness=0,
+    insertbackground=theme["FG"]
+)
+chat_display.pack(padx=8, pady=8, fill="both", expand=True)
 
+command_frame = tk.Frame(root, bg=theme["BG"])
+command_frame.pack(pady=(5, 10))
+
+command_entry = tk.Entry(
+    command_frame, 
+    width=38, 
+    font=("Segoe UI", 11), 
+    bg=theme["ENTRY_BG"], 
+    fg=theme["FG"], 
+    bd=1, 
+    relief="solid", 
+    highlightthickness=1, 
+    highlightbackground=theme["BORDER"]
+)
+command_entry.pack(side=tk.LEFT, padx=5, ipady=4)
 command_entry.bind('<Return>', lambda event: process_command_entry(command_entry))
 
-# Add a button to execute commands
-execute_button = tk.Button(command_frame, text="Execute", command=lambda: process_command_entry(command_entry))
-execute_button.pack(side=tk.LEFT, padx=5)
+execute_button = tk.Button(
+    command_frame, 
+    text="Enviar", 
+    command=lambda: process_command_entry(command_entry),
+    font=("Segoe UI", 10, "bold"),
+    bg=theme["BTN_BG"], 
+    fg=theme["BTN_FG"], 
+    activebackground=theme["BTN_BG_HOVER"], 
+    activeforeground=theme["BTN_FG_HOVER"], 
+    bd=0, 
+    relief="flat", 
+    cursor="hand2"
+)
+execute_button.pack(side=tk.LEFT, padx=5, ipadx=10, ipady=3)
 
-# Add a frame for buttons
-buttons_frame = tk.Frame(root)
-buttons_frame.pack(pady=10)
+buttons_frame = tk.Frame(root, bg=theme["BG"])
+buttons_frame.pack(pady=5)
 
-# Add a button to minimize to tray
-minimize_button = tk.Button(buttons_frame, text="Minimize to Tray", command=minimize_to_tray)
-minimize_button.pack(side=tk.LEFT, padx=5)
+minimize_button = tk.Button(
+    buttons_frame, 
+    text="Minimizar", 
+    command=minimize_to_tray,
+    font=("Segoe UI", 10, "bold"),
+    bg=theme["BTN_BG"], 
+    fg=theme["BTN_FG"], 
+    activebackground=theme["BTN_BG_HOVER"], 
+    activeforeground=theme["BTN_FG_HOVER"], 
+    bd=0, 
+    relief="flat", 
+    cursor="hand2"
+)
+minimize_button.pack(side=tk.LEFT, padx=8, ipadx=10, ipady=3)
 
-# Add a button to view and manage apps
-apps_button = tk.Button(buttons_frame, text="Manage Apps", command=show_apps_window)
-apps_button.pack(side=tk.LEFT, padx=5)
+apps_button = tk.Button(
+    buttons_frame, 
+    text="Apps", 
+    command=show_apps_window,
+    font=("Segoe UI", 10, "bold"),
+    bg=theme["BTN_BG"], 
+    fg=theme["BTN_FG"], 
+    activebackground=theme["BTN_BG_HOVER"], 
+    activeforeground=theme["BTN_FG_HOVER"], 
+    bd=0, 
+    relief="flat", 
+    cursor="hand2"
+)
+apps_button.pack(side=tk.LEFT, padx=8, ipadx=10, ipady=3)
 
-# Add a button to open options window
-options_button = tk.Button(buttons_frame, text="Options", command=show_options_window)
-options_button.pack(side=tk.LEFT, padx=5)
+options_button = tk.Button(
+    buttons_frame, 
+    text="Opciones", 
+    command=show_options_window,
+    font=("Segoe UI", 10, "bold"),
+    bg=theme["BTN_BG"], 
+    fg=theme["BTN_FG"], 
+    activebackground=theme["BTN_BG_HOVER"], 
+    activeforeground=theme["BTN_FG_HOVER"], 
+    bd=0, 
+    relief="flat", 
+    cursor="hand2"
+)
+options_button.pack(side=tk.LEFT, padx=8, ipadx=10, ipady=3, fill="x", expand=True)
 
-# Schedule the delayed start
+apply_theme(theme_name)
+
 options = load_options()
 if options["StartMinimized"] == "True":
-    root.after(2000, minimize_to_tray)  # Delay for 2000 milliseconds (2 seconds)
+    root.after(2000, minimize_to_tray)
 else:
-    root.after(2000, lambda: root.deiconify())  # Delay for 2000 milliseconds (2 seconds)
+    root.after(2000, lambda: root.deiconify())
 
-# Force update the window to ensure all widgets are displayed correctly
 root.update_idletasks()
 
 def update_chat_display(text):
@@ -790,10 +777,8 @@ def update_chat_display(text):
 
 def main():
     sys.excepthook = handle_unhandled_exception
-    # Lanzar el hilo de escucha como daemon para evitar bloqueos
     escucha_thread = threading.Thread(target=listen, daemon=True)
     escucha_thread.start()
-    print("Hilo de escucha lanzado")  # Log para depuración
     root.mainloop()
 
 if __name__ == "__main__":
