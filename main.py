@@ -19,12 +19,49 @@ import pystray
 from PIL import Image
 import csv
 import uuid
-import re
 import requests
-import sys
-import traceback
 import google.generativeai as genai 
 import logging
+import sys
+import traceback
+import re
+# --- INTEGRACIÓN FLASK ---
+from flask import Flask, request, jsonify, send_from_directory
+import socket
+
+# Configuración de webapp y token
+WEBAPP_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'webapp')
+
+app = Flask(__name__)
+
+
+@app.route('/ping', methods=['GET'])
+def ping():
+    return jsonify({'status': 'ok'})
+
+@app.route('/webapp/<path:filename>')
+def serve_webapp(filename):
+    return send_from_directory(WEBAPP_FOLDER, filename)
+
+@app.route('/', methods=['GET', 'POST'])
+def root():
+    if request.method == 'GET':
+        return send_from_directory(WEBAPP_FOLDER, 'index.html')
+    elif request.method == 'POST':
+        data = request.json
+        texto_usuario = data.get('text')
+        if not texto_usuario:
+            return jsonify({'error': 'No text provided'}), 400
+        try:
+            result = chat_bot(texto_usuario)
+            return jsonify({'result': result})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+def run_flask():
+    # Usa la IP local de la máquina
+    ip_local = socket.gethostbyname(socket.gethostname())
+    app.run(host=ip_local, port=5000, debug=False)
 
 # Ensure the script is running in the correct directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -52,8 +89,8 @@ def delete_mp3_files():
             file_path = os.path.join(directory, file)
             try:
                 os.remove(file_path)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Error eliminando {file_path}: {e}")
 
 delete_mp3_files()
 
@@ -82,34 +119,45 @@ def minimize_to_tray():
         icon.run_detached()
         root.withdraw()
 
-def create_default_apps_csv():
-    with open('apps.csv', mode='w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(["Nombre", "Ruta"])
+class AppManager:
+    def __init__(self, csv_path='apps.csv'):
+        self.csv_path = csv_path
+        self.apps = self.load_apps()
 
-def load_apps():
-    apps = {}
-    if not os.path.exists('apps.csv'):
-        create_default_apps_csv()
-    with open('apps.csv', mode='r', newline='') as file:
-        reader = csv.reader(file)
-        for row in reader:
-            if len(row) == 2:
-                apps[row[0].lower()] = [row[1]]
-    return apps
+    def create_default_apps_csv(self):
+        with open(self.csv_path, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(["Nombre", "Ruta"])
 
-def save_apps():
-    with open('apps.csv', mode='w', newline='') as file:
-        writer = csv.writer(file)
-        for app, path in apps.items():
-            writer.writerow([app, path[0]])
+    def load_apps(self):
+        apps = {}
+        if not os.path.exists(self.csv_path):
+            self.create_default_apps_csv()
+        with open(self.csv_path, mode='r', newline='') as file:
+            reader = csv.reader(file)
+            for row in reader:
+                if len(row) == 2:
+                    apps[row[0].lower()] = [row[1]]
+        return apps
+
+    def save_apps(self):
+        with open(self.csv_path, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            for app, path in self.apps.items():
+                writer.writerow([app, path[0]])
+
+app_manager = AppManager()
+apps = app_manager.apps
 
 def add_app():
     app_name = simpledialog.askstring("Add App", "Enter the app name:")
     app_path = simpledialog.askstring("Add App", "Enter the app path:")
     if app_name and app_path:
+        if not os.path.exists(app_path):
+            messagebox.showerror("Error", "La ruta especificada no existe.")
+            return
         apps[app_name.lower()] = [app_path]
-        save_apps()
+        app_manager.save_apps()
         update_apps_list()
         messagebox.showinfo("Success", f"App '{app_name}' added successfully!")
 
@@ -120,9 +168,12 @@ def edit_app():
         new_app_name = simpledialog.askstring("Edit App", "Enter the new app name:", initialvalue=app_name)
         new_app_path = simpledialog.askstring("Edit App", "Enter the new app path:", initialvalue=apps[app_name][0])
         if new_app_name and new_app_path:
+            if not os.path.exists(new_app_path):
+                messagebox.showerror("Error", "La ruta especificada no existe.")
+                return
             del apps[app_name]
             apps[new_app_name.lower()] = [new_app_path]
-            save_apps()
+            app_manager.save_apps()
             update_apps_list()
             messagebox.showinfo("Success", f"App '{new_app_name}' updated successfully!")
 
@@ -131,10 +182,13 @@ def delete_app():
     if selected:
         app_name = apps_list.get(selected).split(":")[0].strip().lower()
         if messagebox.askyesno("Delete App", f"Are you sure you want to delete '{app_name}'?"):
-            del apps[app_name]
-            save_apps()
-            update_apps_list()
-            messagebox.showinfo("Success", f"App '{app_name}' deleted successfully!")
+            try:
+                del apps[app_name]
+                app_manager.save_apps()
+                update_apps_list()
+                messagebox.showinfo("Success", f"App '{app_name}' deleted successfully!")
+            except Exception as e:
+                logging.error(f"Error eliminando app {app_name}: {e}")
 
 def update_apps_list():
     apps_list.delete(0, tk.END)
@@ -206,7 +260,6 @@ audio_thread = None
 stop_audio_event = threading.Event()
 chat_history = []
 callado = False
-apps = load_apps()
 
 THEMES = {
     "light": {
@@ -272,7 +325,6 @@ def listen():
         data = audio.get_raw_data()
         data_queue.put(data)
 
-    # Iniciar la escucha en segundo plano fuera del 'with'
     stop_listen = recorder.listen_in_background(source, record_callback, phrase_time_limit=record_timeout)
     while True:
         if not data_queue.empty():
@@ -306,10 +358,10 @@ def listen():
                         tts(respuesta)
                     update_chat_display(f"User: {mensaje}")
                     update_chat_display(f"Assistant: {respuesta}")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.error(f"Error en listen/playback: {e}")
         else:
-            time.sleep(0.1)
+            time.sleep(0.25)
 
 def transcribe_audio(temp_file):
     try:
@@ -317,10 +369,6 @@ def transcribe_audio(temp_file):
         return result['text'].strip()
     except Exception:
         return ""
-
-def write_transcript():
-    for line in transcription:
-        write_file(line, "transcript", "txt")
 
 def open_app(app_name):
     if app_name in apps:
@@ -516,7 +564,7 @@ def stop_audio():
     global audio_thread
     if audio_thread and audio_thread.is_alive():
         stop_audio_event.set()
-        audio_thread.join()
+        audio_thread.join(timeout=2)
 
 def cerrar_programa():
     try:
@@ -777,9 +825,13 @@ def update_chat_display(text):
 
 def main():
     sys.excepthook = handle_unhandled_exception
+    # Arranca el servidor Flask en un hilo
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
     escucha_thread = threading.Thread(target=listen, daemon=True)
     escucha_thread.start()
     root.mainloop()
+
 
 if __name__ == "__main__":
     main()
