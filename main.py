@@ -25,43 +25,6 @@ import logging
 import sys
 import traceback
 import re
-# --- INTEGRACIÓN FLASK ---
-from flask import Flask, request, jsonify, send_from_directory
-import socket
-
-# Configuración de webapp y token
-WEBAPP_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'webapp')
-
-app = Flask(__name__)
-
-
-@app.route('/ping', methods=['GET'])
-def ping():
-    return jsonify({'status': 'ok'})
-
-@app.route('/webapp/<path:filename>')
-def serve_webapp(filename):
-    return send_from_directory(WEBAPP_FOLDER, filename)
-
-@app.route('/', methods=['GET', 'POST'])
-def root():
-    if request.method == 'GET':
-        return send_from_directory(WEBAPP_FOLDER, 'index.html')
-    elif request.method == 'POST':
-        data = request.json
-        texto_usuario = data.get('text')
-        if not texto_usuario:
-            return jsonify({'error': 'No text provided'}), 400
-        try:
-            result = chat_bot(texto_usuario)
-            return jsonify({'result': result})
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-
-def run_flask():
-    # Usa la IP local de la máquina
-    ip_local = socket.gethostbyname(socket.gethostname())
-    app.run(host=ip_local, port=5000, debug=False)
 
 # Ensure the script is running in the correct directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -825,9 +788,6 @@ def update_chat_display(text):
 
 def main():
     sys.excepthook = handle_unhandled_exception
-    # Arranca el servidor Flask en un hilo
-    flask_thread = threading.Thread(target=run_flask, daemon=True)
-    flask_thread.start()
     escucha_thread = threading.Thread(target=listen, daemon=True)
     escucha_thread.start()
     root.mainloop()
