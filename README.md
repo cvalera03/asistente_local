@@ -40,6 +40,42 @@ scoop install ffmpeg
 
 Para mas información sobre Whisper visita: https://github.com/openai/whisper
 
+# Características
+
+- **Transcripción de voz en tiempo real:** Utiliza Whisper para convertir tu voz a texto de manera rápida y precisa, permitiendo interacción natural.
+- **Activación por palabra clave:** El asistente permanece en escucha pasiva y solo responde cuando detecta palabras clave como "lumi", "lumie", "lumia", etc., evitando respuestas accidentales.
+- **Interfaz gráfica moderna y personalizable:** Basada en Tkinter, con diseño intuitivo, soporte para modo claro y oscuro, y botones interactivos.
+- **Selección de modelo de IA:** Puedes elegir entre modelos LLM locales (Ollama, como llama3.2, phi3, gemma, qwen, granite, deepseek, etc.) o el modelo Gemini de Google, según tus necesidades y recursos.
+- **Soporte para múltiples modelos de Whisper:** Elige el modelo de reconocimiento de voz que mejor se adapte a tu equipo (tiny, base, small, medium, large, turbo).
+- **Ejecución en segundo plano y minimización a bandeja:** El asistente puede ejecutarse discretamente en la bandeja del sistema, permitiendo que sigas trabajando sin interrupciones.
+- **Gestión avanzada de aplicaciones:** Desde la interfaz puedes agregar, editar, eliminar y abrir tus aplicaciones favoritas con comandos de voz o texto.
+- **Control multimedia local:** Controla la reproducción de música o videos en tu equipo con comandos de voz (play, pausa, siguiente, anterior).
+- **Consulta del clima:** Pregunta por la temperatura o el clima de tu ciudad y obtén la información actualizada mediante OpenWeatherMap.
+- **Chatbot conversacional:** Interactúa con el asistente mediante texto o voz, con historial de contexto para mantener conversaciones naturales.
+- **Modo callado y silenciamiento:** Puedes pedirle que guarde silencio temporalmente o activar el "modo callado" para que no hable hasta que lo desactives.
+- **Configuración persistente:** Todas las opciones y preferencias se guardan automáticamente y se cargan al iniciar el asistente.
+- **Manejo avanzado de errores:** Los errores se registran en un archivo de log y se notifican de forma clara al usuario.
+- **Integración web:** Incluye un servidor Flask para exponer una API y servir una webapp local.
+- **Cierre seguro:** El asistente puede cerrarse de forma controlada, liberando recursos y deteniendo procesos asociados.
+
+## Comandos de voz disponibles
+
+Puedes interactuar con el asistente usando los siguientes comandos de voz (también funcionan por texto):
+
+- **"abre [nombre de app]"**: Abre la aplicación que hayas configurado previamente. Ejemplo: "abre chrome".
+- **"bloqueate"**: Bloquea la sesión de Windows.
+- **"pausa"**: Pausa o reanuda la reproducción multimedia.
+- **"reproduce"**: Inicia o reanuda la reproducción multimedia.
+- **"siguiente"**: Pasa a la siguiente canción o pista.
+- **"anterior"**: Vuelve a la canción o pista anterior.
+- **"duermete"** o **"apagate"**: Apaga el equipo inmediatamente.
+- **"adiós"**: Cierra el asistente de forma segura.
+- **"callate"** o **"cállate"**: Silencia la voz del asistente temporalmente.
+- **"modo callado"**: Activa o desactiva el modo callado, en el que el asistente no responde con voz.
+- **"temperatura"**: Informa sobre el clima y la temperatura actual de la ciudad configurada.
+
+Además, cualquier otra frase o pregunta será respondida por el chatbot integrado, ya sea usando el modelo local o Gemini, según tu configuración.
+
 # Objetivos
 - [X] Transcripción en tiempo real 
 - [X] Detectar palabra clave para que el asistente sepa que se le esta hablando y ejecutar acciones
